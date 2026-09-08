@@ -25,15 +25,18 @@ class Settings(BaseSettings):
     )
     vision_model: str = Field(
         default="qwen3-vl:8b",
-        description="Ollama vision model tag (confirm via hardware spike task 1.6).",
+        description="Ollama vision model tag (locked after task 1.6 Intel macOS spike).",
     )
     min_ollama_version: str = Field(
         default="0.33.3",
         description="Minimum supported Ollama server version.",
     )
-    class_names_path: Path = Field(
-        default_factory=lambda: _project_root() / "resources" / "oxford102" / "class_names.txt",
-        description="Bundled Oxford 102 class name list.",
+    species_catalog_path: Path = Field(
+        default_factory=lambda: _project_root()
+        / "resources"
+        / "species_catalog"
+        / "default.txt",
+        description="Newline-delimited closed-set species label list for identification.",
     )
     uncertainty_threshold: float = Field(
         default=0.5,
@@ -46,7 +49,7 @@ class Settings(BaseSettings):
         description="Directory for persisted identification run JSON artifacts.",
     )
     prompt_version: str = Field(
-        default="oxford102-closed-set-v1",
+        default="closed-set-v1",
         description="Prompt template version recorded in artifacts.",
     )
 
