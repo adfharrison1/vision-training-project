@@ -1,0 +1,128 @@
+schema: spec-driven
+
+context: |
+  Project: UK Plant Identification (learning exercise — not a product).
+
+  Domain: single-species identification of UK-occurring flowering plants,
+  starting with the Oxford 102 Flowers benchmark (~102 classes, pre-labelled,
+  free download). One observation = 1–3 photographs of the same plant.
+
+  Supersedes: initial_extenal_dev_spec.md (safety-equipment domain — retained
+  as historical reference only). OpenSpec changes are subject to revision at
+  planning time.
+
+  Code architecture (standing directive — do not skip):
+  - Clean-architecture-ish layering with strict dependency direction:
+      interfaces (CLI, future HTTP) -> application -> domain
+      infrastructure implements domain repository interfaces
+      domain MUST NOT import application, infrastructure, or interfaces
+  - Repository pattern for swappable identification backends:
+      domain defines IdentificationRepository (port/interface)
+      infrastructure provides implementations (VLM/Ollama now; classical ML later)
+      application use cases depend only on the interface, never concrete backends
+  - Composition/wiring (backend selection, settings) lives at the outer edge
+      (CLI entrypoint or dedicated composition module), not inside use cases
+  - Eval and external baselines (Pl@ntNet API) live outside runtime identify path
+  - Same Observation / ObservationResult models and metrics regardless of backend
+
+  Runtime architecture (non-negotiable):
+  - Runtime identification uses ONLY local project backends wired via
+    IdentificationRepository — initially VLM/Ollama; classical ML later
+  - NO external identification APIs at runtime — not Pl@ntNet, not iNaturalist,
+    not cloud LLMs
+  - External services (e.g. Pl@ntNet API) MAY be used ONLY in optional eval/
+    benchmark adapters — never in IdentifyPlantUseCase or runtime repositories
+
+  Stack (current direction):
+  - Python 3.14.7 (pinned in `.python-version`; managed via uv)
+  - uv 0.12.10, ruff 0.16.6, pytest 9.1.1
+  - Pydantic 2.13.5, PyYAML 6.0.3, Pillow 12.3.0
+  - ollama Python client 0.6.2 against Ollama server 0.33.3+
+  - Default vision model candidate: qwen3-vl:8b (re-evaluate on Intel hardware during Change 1 spike)
+  - Node 24.13.1 for OpenSpec CLI tooling only (see `.nvmrc`)
+  - Pin exact library versions in `pyproject.toml` / `uv.lock`; bump deliberately, not ad hoc
+
+  Domain rules (stable intent):
+  - Task: given photo(s) of one plant, return structured top-k species predictions
+  - Primary metrics: top-1 and top-3 accuracy against labelled ground truth
+  - No property checklist, no PASS/FAIL compliance rule, no safety-status vocabulary
+  - Multi-photo: 1–3 images of the same plant per observation (optional single photo)
+
+  Eval dataset (planned):
+  - Oxford 102 Flowers — free, pre-labelled, train/val/test splits included
+  - Pl@ntNet API baseline (Change 2): optional, eval-only, rate-limit aware; skip if
+    quota/cost makes it impractical
+
+  Planned change sequence (indicative — revise at planning time):
+  1. uk-plant-id-poc           — layered app + VLM repository [active]
+  2. eval-dataset-baseline     — Oxford 102 eval + optional Pl@ntNet comparison [stub]
+  3. classical-ml-backend      — train/serve sklearn/torch repo on Oxford 102 [stub]
+  4. direct-species-rag        — species sheets via direct lookup (VLM path) [stub]
+  5. vector-retrieval          — semantic retrieval [stub]
+  6. improvement-loop-service  — experiment loop + local service [stub]
+  7. fine-tuning-investigation — optional [stub]
+
+  Sequencing constraints:
+  - Establish layered architecture and VLM repository before eval runner
+  - Build Oxford 102 eval before optimizing prompts/RAG
+  - Classical ML backend plugs into same repository interface — compare fairly on same metrics
+  - Try direct species lookup before vector DB
+  - Do not investigate fine-tuning until local VLM, classical ML, and RAG baselines are understood
+
+  Version pinning (standing directive — do not skip):
+  - At planning and implementation time, use the latest stable releases of all
+    languages, runtimes, frameworks, and libraries — verify against official sources
+    (python.org, PyPI, GitHub releases, Ollama) on the planning date; do not rely
+    on memory or stale docs
+  - Pin exact versions in pyproject.toml / uv.lock (and document them in design.md);
+    bump deliberately with a recorded reason, never leave floating or unspecified
+  - When a change introduces new dependencies, add them to the pinned-versions table
+    before tasks are written
+
+  Developer experience (standing directive — do not skip):
+  - Treat developer ergonomics as a first-class requirement, not an afterthought
+  - Prefer: uv-managed envs, one-command setup/verify, clear README, helpful CLI
+    errors, fast lint/test loops, minimal manual steps, sensible defaults
+  - Every change SHOULD include verify-env or equivalent smoke checks where applicable
+  - Avoid Python ecosystem pain: no global installs, no manual venv fiddling, no
+    undocumented prerequisite hunting
+
+  Agentic coding (standing directive — end of each phase):
+  - At the end of each change (before or during archive), review whether the project
+    needs updated agent guidance for the next phase
+  - Consider adding or refreshing: project agent instructions (e.g. AGENTS.md,
+    CLAUDE.md), Cursor rules (.cursor/rules/), commands (.cursor/commands/),
+    and project-specific skills (.cursor/skills/)
+  - Capture conventions learned in that phase: stack pins, verify commands, domain
+    vocabulary, layer boundaries, repository wiring, and testing patterns
+  - Keep agent assets concise and actionable; do not duplicate OpenSpec specs or README
+
+rules:
+  proposal:
+    - Include a Non-goals section
+    - State dependencies on prior changes
+    - List decision gates that must be resolved before full planning
+    - Mark stub/placeholder changes as subject to revision
+    - Note developer-experience goals when the change affects local setup or workflows
+    - State explicitly that runtime inference is local-only; external APIs are eval-only if at all
+    - Describe layer boundaries and swappable repository backends when architecture is affected
+  design:
+    - Record alternatives considered for storage, retrieval, and eval architecture
+    - Include a pinned-versions table with exact stable releases verified on the planning date
+    - Flag open questions that would change specs or task breakdown before coding
+    - Describe local dev setup, verification commands, and devex choices explicitly
+    - Separate runtime path from eval/benchmark path in architecture; forbid external ID APIs in runtime
+    - Document domain/application/infrastructure/interfaces layers and repository ports
+  tasks:
+    - Break tasks into chunks achievable in one session
+    - Include verification criteria in each task description
+    - Include setup, verify-env, and README/documentation tasks when the change affects local dev
+    - Scaffold layer directories and dependency-direction tests early when introducing architecture
+    - End each change with an agentic-coding review task to update project agent docs, rules, commands, or skills when the phase introduced new conventions
+
+operations:
+  archive:
+    guidance:
+      - Before archiving, confirm agentic-coding assets reflect the completed phase
+      - Note in the archive summary any new or updated AGENTS.md, CLAUDE.md, rules,
+        commands, or skills added for downstream work
