@@ -1,0 +1,31 @@
+[importlinter]
+root_package = plant_id
+include_external_packages = True
+
+[importlinter:contract:domain-independence]
+name = Domain independence
+type = forbidden
+source_modules =
+    plant_id.domain
+forbidden_modules =
+    plant_id.application
+    plant_id.infrastructure
+    plant_id.interfaces
+
+[importlinter:contract:application-independence]
+name = Application independence
+type = forbidden
+source_modules =
+    plant_id.application
+forbidden_modules =
+    plant_id.infrastructure
+    plant_id.interfaces
+
+[importlinter:contract:interfaces-thin]
+name = Thin interfaces
+type = forbidden
+source_modules =
+    plant_id.interfaces
+forbidden_modules =
+    ollama
+allow_indirect_imports = true
