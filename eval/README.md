@@ -5,6 +5,7 @@ This directory is for **benchmark and comparison code only**. It is intentionall
 ## What belongs here (Change 2+)
 
 - Oxford 102 eval runner (test split, top-1 / top-3 metrics)
+- **`check_ground_truth.py`** — look up `imagelabels.mat` label for one image; optional `--identify` to compare VLM top-1
 - Optional **Pl@ntNet API baseline** — eval-only, flag-gated, skippable if rate-limited
 - Comparison reports: local backends (VLM, later classical ML) vs ground truth
 

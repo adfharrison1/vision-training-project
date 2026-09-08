@@ -21,6 +21,7 @@ dev = [
     "import-linter==2.13",
     "pytest==9.1.1",
     "ruff==0.16.6",
+    "scipy==1.18.1",
 ]
 
 [build-system]
@@ -39,6 +40,7 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "integration: tests requiring live Ollama",
