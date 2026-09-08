@@ -64,10 +64,11 @@ See `proposal.md`. UK flower ID on Oxford 102 with **clean-architecture-ish** la
 |---|---|---|
 | **domain** | Entities, value objects, repository Protocols, `ApplicationEvents`, domain exceptions | stdlib, typing, pydantic models |
 | **application** | Use cases (`IdentifyPlantUseCase`), DTOs if needed | domain |
-| **infrastructure** | Repository implementations, Ollama client, file I/O, species catalog loader | domain (+ third-party libs) |
-| **interfaces** | CLI commands, Rich event handler, future FastAPI routes | application, infrastructure (composition only) |
+| **infrastructure** | Repository implementations, Ollama client, file I/O, species catalog loader, settings | domain (+ third-party libs) |
+| **interfaces/cli** | CLI commands, Rich presentation helpers, future FastAPI routes | `interfaces.composition` only (plus stdlib) |
+| **interfaces/composition** | Composition root — wires use cases; builds observations; binds `ApplicationEvents` | application, domain, infrastructure |
 
-**Dependency rule:** dependencies point inward. Domain never imports outward.
+**Dependency rule:** dependencies point inward. Domain never imports outward. Infrastructure never imports application or interfaces. CLI commands never import domain or infrastructure directly — only via `interfaces.composition`.
 
 ### 2. Repository ports (domain)
 
@@ -128,7 +129,7 @@ No Ollama imports here. No HTTP. No argparse.
 ### 5. Composition / dev wiring
 
 ```python
-# infrastructure/composition/container.py
+# interfaces/composition/container.py
 
 def build_identify_use_case(backend: Literal["vlm", "classical"], settings: Settings) -> IdentifyPlantUseCase:
     species_catalog = FileSpeciesCatalog(settings.species_catalog_path)
@@ -192,8 +193,6 @@ src/plant_id/
 │   └── use_cases/
 │       └── identify_plant.py
 ├── infrastructure/
-│   ├── composition/
-│   │   └── container.py
 │   ├── identification/
 │   │   ├── vlm_ollama.py
 │   │   └── classical_ml.py  # stub
@@ -201,12 +200,18 @@ src/plant_id/
 │   │   └── file_artifacts.py
 │   ├── species/
 │   │   └── file_catalog.py
+│   ├── ollama/
+│   │   └── environment.py
 │   └── config/
 │       └── settings.py
 └── interfaces/
+    ├── composition/
+    │   ├── container.py       # wires use cases to infrastructure
+    │   ├── identify.py        # execute_identify orchestration
+    │   └── events.py          # ApplicationEvents binding
     └── cli/
+        ├── presentation.py    # Rich CLI presentation (uses composition)
         ├── main.py
-        ├── progress.py        # binds ApplicationEvents for identify/demo
         ├── rich_events.py     # Rich terminal handler (CLI only)
         └── commands/
             ├── verify_env.py
@@ -244,7 +249,9 @@ Use **`import-linter` 2.13** (dev dependency) with a root `.importlinter` config
 
 - **domain independence** — `plant_id.domain` must not import application, infrastructure, or interfaces
 - **application independence** — `plant_id.application` must not import infrastructure or interfaces
-- **interfaces thin** — interfaces may import application and infrastructure composition only (no direct Ollama imports in CLI modules)
+- **infrastructure independence** — `plant_id.infrastructure` must not import application or interfaces
+- **interfaces CLI independence** — `plant_id.interfaces.cli` must not import infrastructure (wiring lives in `interfaces.composition`)
+- **interfaces CLI domain independence** — `plant_id.interfaces.cli` must not import domain (observation building and error mapping live in `interfaces.composition`)
 
 Run via `uv run lint-imports` in CI and locally alongside ruff/pytest.
 
@@ -307,7 +314,7 @@ Cross-cutting runtime events (pipeline stages, artifact saved, future structured
 **Rules:**
 
 - Domain/application/infrastructure MAY call `log_event` / `log_stage` / `log_wait`; MUST NOT import Rich or write progress directly to stderr.
-- CLI binds the presentation handler at the highest level (`identification_progress` context manager).
+- CLI binds Rich presentation via `interfaces/cli/presentation.py`, which passes an `ApplicationEvents` handler into `execute_identify` in composition.
 - `--quiet` skips binding (events remain no-op).
 - `NO_COLOR=1` or non-TTY stderr → plain-text fallback inside `RichApplicationEvents`.
 

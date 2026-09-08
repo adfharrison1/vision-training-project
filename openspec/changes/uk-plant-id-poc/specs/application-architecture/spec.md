@@ -18,6 +18,16 @@ The codebase SHALL be organised into domain, application, infrastructure, and in
 - **WHEN** a developer inspects application use cases
 - **THEN** they SHALL depend on domain models and repository interfaces only, not concrete infrastructure implementations
 
+#### Scenario: Infrastructure independence
+
+- **WHEN** a developer inspects infrastructure repository implementations
+- **THEN** they SHALL depend on domain ports and third-party libraries only and SHALL NOT import from application or interfaces layers
+
+#### Scenario: CLI commands use composition for wiring
+
+- **WHEN** a developer inspects CLI command modules under `interfaces/cli`
+- **THEN** they SHALL NOT import infrastructure or domain directly and SHALL call shared orchestration in `interfaces/composition`
+
 ### Requirement: Identification repository port
 
 The domain layer SHALL define an `IdentificationRepository` interface (protocol) that accepts an `Observation` and returns an `ObservationResult`.
@@ -29,7 +39,7 @@ The domain layer SHALL define an `IdentificationRepository` interface (protocol)
 
 ### Requirement: Composition at the boundary
 
-Backend selection and dependency wiring SHALL occur in a composition module or interfaces entrypoint, not inside use cases. Species catalog implementations SHALL be injected into identification repositories at composition time, not passed to the use case directly.
+Backend selection and dependency wiring SHALL occur in `interfaces/composition`, not inside use cases or infrastructure. Species catalog implementations SHALL be injected into identification repositories at composition time, not passed to the use case directly.
 
 #### Scenario: CLI backend flag
 

@@ -30,7 +30,7 @@
 
 ## 5. Composition and interfaces (thin CLI)
 
-- [x] 5.1 Implement `infrastructure/composition/container.py`: build `FileSpeciesCatalog`, inject into identification repo, wire use case; verify `vlm` wiring in unit test
+- [x] 5.1 Implement `interfaces/composition/container.py`: build `FileSpeciesCatalog`, inject into identification repo, wire use case; verify `vlm` wiring in unit test
 - [x] 5.2 Implement CLI commands: `verify-env`, `identify --backend vlm`, `demo --backend vlm`, `--quiet`; verify end-to-end demo on Oxford 102 sample
 - [x] 5.3 CLI MUST NOT contain business logic beyond argument parsing, wiring, and `ApplicationEvents` binding
 
