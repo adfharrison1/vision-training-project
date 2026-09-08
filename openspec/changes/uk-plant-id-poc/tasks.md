@@ -36,9 +36,9 @@
 
 ## 6. Architecture and testing
 
-- [ ] 6.1 Add `.importlinter` contracts: domain independence, application independence, thin interfaces; verify `uv run lint-imports` passes
-- [ ] 6.2 Integration test `@pytest.mark.integration` with live Ollama via VLM repository; skip when unavailable
-- [ ] 6.3 README documents layer boundaries, repository pattern, catalog injection, and how to add classical backend later
+- [x] 6.1 Add `.importlinter` contracts: domain independence, application independence, thin interfaces; verify `uv run lint-imports` passes
+- [x] 6.2 Integration test `@pytest.mark.integration` with live Ollama via VLM repository; skip when unavailable
+- [x] 6.3 README documents layer boundaries, repository pattern, catalog injection, and how to add classical backend later
 
 ## 7. Agentic coding (end of phase)
 
