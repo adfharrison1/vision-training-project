@@ -22,13 +22,14 @@ See `proposal.md`. UK flower ID on Oxford 102 with **clean-architecture-ish** la
               Observation, ObservationResult, Prediction
               IdentificationRepository (Protocol)
               ArtifactRepository (Protocol)
+              ApplicationEvents (port + context binding)
                               ^
                          INFRASTRUCTURE
                          ==============
               VlmOllamaIdentificationRepository   <-- Change 1
               ClassicalMlIdentificationRepository <-- stub / Change 3
               FileArtifactRepository
-              Oxford102SpeciesCatalog
+              FileSpeciesCatalog
 
   EVAL (outside runtime repositories)
   ===================================
@@ -61,10 +62,10 @@ See `proposal.md`. UK flower ID on Oxford 102 with **clean-architecture-ish** la
 
 | Layer | Contains | May import |
 |---|---|---|
-| **domain** | Entities, value objects, repository Protocols, domain exceptions | stdlib, typing, pydantic models |
+| **domain** | Entities, value objects, repository Protocols, `ApplicationEvents`, domain exceptions | stdlib, typing, pydantic models |
 | **application** | Use cases (`IdentifyPlantUseCase`), DTOs if needed | domain |
-| **infrastructure** | Repository implementations, Ollama client, file I/O, Oxford 102 loader | domain (+ third-party libs) |
-| **interfaces** | CLI commands, future FastAPI routes | application, infrastructure (composition only) |
+| **infrastructure** | Repository implementations, Ollama client, file I/O, species catalog loader | domain (+ third-party libs) |
+| **interfaces** | CLI commands, Rich event handler, future FastAPI routes | application, infrastructure (composition only) |
 
 **Dependency rule:** dependencies point inward. Domain never imports outward.
 
@@ -77,7 +78,8 @@ class IdentificationRepository(Protocol):
     @property
     def backend_id(self) -> str: ...
 
-    def identify(self, observation: Observation) -> ObservationResult: ...
+    def identify(self, observation: Observation) -> tuple[ObservationResult, dict]:
+        """Return structured result and raw model payload for artifact persistence."""
 
 
 class ArtifactRepository(Protocol):
@@ -117,9 +119,9 @@ No Ollama imports here. No HTTP. No argparse.
 
 | Class | Role |
 |---|---|
-| `VlmOllamaIdentificationRepository` | Ollama multimodal, prompts, structured JSON → `ObservationResult`; receives injected `SpeciesCatalogRepository` |
-| `FileArtifactRepository` | JSON artifacts under `artifacts/` |
-| `Oxford102SpeciesCatalog` | Load 102 class names from bundled `resources/oxford102/class_names.txt` |
+| `VlmOllamaIdentificationRepository` | Ollama multimodal, prompts, structured JSON → `ObservationResult`; emits `ApplicationEvents` stages; receives injected `SpeciesCatalogRepository` |
+| `FileArtifactRepository` | JSON artifacts under `artifacts/`; emits `log_event` on save |
+| `FileSpeciesCatalog` | Load closed-set labels from a newline-delimited text file (`Settings.species_catalog_path`) |
 
 **Stub:** `ClassicalMlIdentificationRepository` — raises `NotImplementedError` or registered but disabled until Change 3.
 
@@ -129,7 +131,7 @@ No Ollama imports here. No HTTP. No argparse.
 # infrastructure/composition/container.py
 
 def build_identify_use_case(backend: Literal["vlm", "classical"], settings: Settings) -> IdentifyPlantUseCase:
-    species_catalog = Oxford102SpeciesCatalog(settings.class_names_path)
+    species_catalog = FileSpeciesCatalog(settings.species_catalog_path)
     if backend == "vlm":
         id_repo = VlmOllamaIdentificationRepository(settings, species_catalog)
     elif backend == "classical":
@@ -138,14 +140,19 @@ def build_identify_use_case(backend: Literal["vlm", "classical"], settings: Sett
     return IdentifyPlantUseCase(id_repo, artifact_repo)
 ```
 
-**Catalog injection:** `IdentifyPlantUseCase` does **not** depend on `SpeciesCatalogRepository`. The composition root builds `Oxford102SpeciesCatalog` once and injects it into identification repository implementations that need closed-set labels (VLM prompts now; classical ML label mapping later).
+**Catalog injection:** `IdentifyPlantUseCase` does **not** depend on `SpeciesCatalogRepository`. The composition root builds `FileSpeciesCatalog` once and injects it into identification repository implementations that need closed-set labels (VLM prompts now; classical ML label mapping later).
+
+**Dataset agnostic runtime:** Application and domain code MUST NOT reference Oxford 102 or other benchmark names. The default bundled catalog (`resources/species_catalog/default.txt`) happens to contain the Oxford 102 vocabulary today; swap via `PLANT_ID_SPECIES_CATALOG_PATH` without code changes. Downloaded images under `data/oxford102/` are for eval/demo/training only.
 
 CLI:
 
 ```bash
 plant-id identify --backend vlm --photos a.jpg,b.jpg
 plant-id demo --backend vlm
+plant-id identify --backend vlm --photos a.jpg --quiet   # suppress CLI progress
 ```
+
+**ApplicationEvents:** Infrastructure and application code call domain helpers (`log_event`, `log_stage`, `log_wait`). Default is a silent no-op. CLI binds `RichApplicationEvents` for the duration of `identify` / `demo` via `use_application_events()` (see §15).
 
 ### 6. VLM vs classical ML behaviour (future)
 
@@ -168,13 +175,18 @@ Same `ObservationResult` either way → same eval metrics.
 
 ```text
 resources/
+└── species_catalog/
+    └── default.txt            # closed-set labels; Oxford 102 vocabulary today
+
+data/                          # gitignored; benchmark datasets for eval/training/demo
 └── oxford102/
-    └── class_names.txt        # 102 canonical labels; no full dataset download required for demo
+    └── jpg/ …
 
 src/plant_id/
 ├── domain/
 │   ├── models.py
 │   ├── repositories.py      # Protocols
+│   ├── application_events.py
 │   └── exceptions.py
 ├── application/
 │   └── use_cases/
@@ -188,12 +200,14 @@ src/plant_id/
 │   ├── persistence/
 │   │   └── file_artifacts.py
 │   ├── species/
-│   │   └── oxford102.py
+│   │   └── file_catalog.py
 │   └── config/
 │       └── settings.py
 └── interfaces/
     └── cli/
         ├── main.py
+        ├── progress.py        # binds ApplicationEvents for identify/demo
+        ├── rich_events.py     # Rich terminal handler (CLI only)
         └── commands/
             ├── verify_env.py
             ├── identify.py
@@ -234,16 +248,23 @@ Use **`import-linter` 2.13** (dev dependency) with a root `.importlinter` config
 
 Run via `uv run lint-imports` in CI and locally alongside ruff/pytest.
 
-### 12. Hardware spike (deferred to task 1.6)
+### 12. Hardware spike (task 1.6 — complete 2026-09-08)
 
-Do **not** lock the default vision model until task **1.6** is executed on the developer machine:
+Spike run on **Intel macOS** with Ollama 0.33.3 and `qwen3-vl:8b`:
 
-1. Install Ollama 0.33.3+ and pull candidate `qwen3-vl:8b`
-2. Run a documented manual spike (one Oxford 102 sample image; note latency, RAM, quality)
-3. If unusable on Intel hardware, document and configure an alternate model in `Settings`/README
-4. Only then proceed with task 4.2 (live VLM integration)
+| Metric | Result |
+|---|---|
+| Steady RAM | ~7 GB (Ollama) |
+| Inference spike | ~+1 GB |
+| Latency | Second run ≥2× faster than first |
+| Outcome | **Keep `qwen3-vl:8b`** as default; task 4.2 unblocked |
 
-Architecture scaffold (tasks 1–3, 5–6) may proceed in parallel; task 4.2 depends on spike outcome.
+**Integration notes for task 4.2:**
+
+- Use Python `ollama.chat` / `images` array — not CLI path-in-prompt.
+- Pass **absolute** image paths; do not rely on `~` expansion.
+- Disable or hide thinking output for identification requests.
+- Expect cold-start latency on first request after idle.
 
 ### 13. Pinned versions
 
@@ -260,14 +281,37 @@ Verified **2026-09-06**:
 | PyYAML | 6.0.3 |
 | Pillow | 12.3.0 |
 | ollama (Python) | 0.6.2 |
+| rich | 14.3.2 |
 | Ollama server | 0.33.3+ |
-| Default vision model (candidate) | qwen3-vl:8b — confirm via task 1.6 spike |
+| Default vision model | **qwen3-vl:8b** — confirmed task 1.6 spike (Intel macOS, ~7 GB + ~1 GB spike) |
 
 ### 14. Dev experience
 
 - `plant-id verify-env` — Ollama + model (VLM backend)
 - `uv run lint-imports` — layer boundary contracts
-- Fake `IdentificationRepository` and fake `SpeciesCatalogRepository` for fast unit tests without Ollama
+- Fake `IdentificationRepository` for fast unit tests without Ollama
+- `ApplicationEvents` recording test double for stage/event assertions
+
+### 15. Application events (progress / observability)
+
+Cross-cutting runtime events (pipeline stages, artifact saved, future structured logging) use a **domain port** with **context-local binding**:
+
+| Piece | Location | Role |
+|---|---|---|
+| `ApplicationEvents` protocol | `domain/application_events.py` | `log_event`, `log_stage`, `log_wait`, session begin/end |
+| `NoopApplicationEvents` | same | Default when nothing bound (tests, eval, library use) |
+| `log_*` helpers | same | Callable from any layer without importing UI |
+| `RichApplicationEvents` | `interfaces/cli/rich_events.py` | Rich spinners/colors on stderr (TTY only) |
+| Binding | `interfaces/cli/progress.py` | `use_application_events(RichApplicationEvents())` for identify/demo |
+
+**Rules:**
+
+- Domain/application/infrastructure MAY call `log_event` / `log_stage` / `log_wait`; MUST NOT import Rich or write progress directly to stderr.
+- CLI binds the presentation handler at the highest level (`identification_progress` context manager).
+- `--quiet` skips binding (events remain no-op).
+- `NO_COLOR=1` or non-TTY stderr → plain-text fallback inside `RichApplicationEvents`.
+
+VLM repository emits four numbered stages (validate, build prompt, Ollama call with spinner, parse) when a handler is bound.
 
 ## Risks / Trade-offs
 
@@ -280,8 +324,9 @@ Verified **2026-09-06**:
 | Topic | Decision |
 |---|---|
 | Layer boundary enforcement | **`import-linter` 2.13** with `.importlinter` contracts |
-| Species catalog | **`SpeciesCatalogRepository` port**; inject `Oxford102SpeciesCatalog` into identification repos via composition (not into use case) |
-| Oxford 102 labels | Bundled **`resources/oxford102/class_names.txt`**; Change 2 may also load from downloaded dataset |
+| Species catalog | **`SpeciesCatalogRepository` port** + **`FileSpeciesCatalog`**; inject via composition (not into use case); path via `Settings.species_catalog_path` |
+| Species labels | Bundled **`resources/species_catalog/default.txt`** (Oxford 102 vocabulary today); swap file via env; **`data/oxford102/`** for images/eval only |
+| Application events | **`ApplicationEvents` port** with context binding; Rich handler in CLI only; infra emits stages via `log_*` helpers |
 | Uncertainty flag | Prompt-requested per-prediction confidence + `Settings.uncertainty_threshold`; reassess alternatives at task 4.2 |
-| Hardware / model | Manual spike in **task 1.6** before locking default model; task 4.2 blocked until spike completes |
+| Hardware / model | **`qwen3-vl:8b` locked** after task 1.6 spike (Intel macOS); use `images` array + absolute paths in VLM repo |
 | Domain validation | **Pydantic models** validate 1–3 photos at construction |

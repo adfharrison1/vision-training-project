@@ -72,3 +72,17 @@ The inference module SHALL NOT call Pl@ntNet, iNaturalist, or other external ide
 
 - **WHEN** the runtime identification code path executes
 - **THEN** it SHALL communicate only with the local Ollama service
+
+### Requirement: Pipeline progress events
+
+The VLM repository MAY emit numbered pipeline stage events via the domain `ApplicationEvents` helpers during identification.
+
+#### Scenario: Stage events during inference
+
+- **WHEN** an `ApplicationEvents` handler is bound and identification runs
+- **THEN** the VLM repository SHALL emit stage events for validation, prompt build, Ollama inference, and response parsing
+
+#### Scenario: No presentation coupling in infrastructure
+
+- **WHEN** the VLM repository emits progress events
+- **THEN** it SHALL NOT import Rich or other terminal UI libraries

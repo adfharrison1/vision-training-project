@@ -62,3 +62,22 @@ External comparison services (e.g. Pl@ntNet API) SHALL live in eval/benchmark mo
 
 - **WHEN** an eval baseline adapter is added in a later change
 - **THEN** it SHALL remain outside the runtime repository interface hierarchy
+
+### Requirement: Application events port
+
+Cross-cutting runtime observability (pipeline stages, diagnostic events) SHALL use a domain-level `ApplicationEvents` port with context-local binding. Lower layers SHALL call `log_event`, `log_stage`, or `log_wait` helpers and SHALL NOT import presentation libraries.
+
+#### Scenario: Silent default outside CLI session
+
+- **WHEN** code runs without a bound `ApplicationEvents` handler
+- **THEN** event calls SHALL be no-ops
+
+#### Scenario: CLI binds terminal handler
+
+- **WHEN** a developer runs `identify` or `demo` without `--quiet`
+- **THEN** the CLI SHALL bind a terminal presentation handler for the duration of the use case
+
+#### Scenario: Infrastructure emits events without UI imports
+
+- **WHEN** the VLM repository reports pipeline progress
+- **THEN** it SHALL use domain event helpers only and SHALL NOT import Rich or write directly to stderr

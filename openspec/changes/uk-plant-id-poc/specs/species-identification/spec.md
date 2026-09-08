@@ -32,14 +32,19 @@ An observation SHALL contain an identifier and one to three photograph paths dep
 - **WHEN** an observation is constructed with zero photograph paths
 - **THEN** validation SHALL reject it before the repository is invoked
 
-### Requirement: Oxford 102 class vocabulary for demo
+### Requirement: Configurable closed-set species catalog
 
-For this change, demo and smoke-test identifications SHALL target the Oxford 102 Flowers class vocabulary.
+Runtime identification SHALL constrain predictions to labels from a configurable species catalog file. Application and domain code SHALL NOT hard-code benchmark or dataset names.
 
-#### Scenario: Demo uses Oxford 102 labels
+#### Scenario: Default bundled catalog
+
+- **WHEN** no custom catalog path is configured
+- **THEN** the system SHALL load `resources/species_catalog/default.txt` (Oxford 102 vocabulary in the default setup)
+
+#### Scenario: Demo uses configured catalog labels
 
 - **WHEN** a developer runs the documented demo command
-- **THEN** the prompt SHALL constrain or guide predictions toward Oxford 102 class names
+- **THEN** the prompt SHALL constrain predictions toward labels from the configured catalog
 
 ### Requirement: Prediction result structure
 

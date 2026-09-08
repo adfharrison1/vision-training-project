@@ -20,7 +20,7 @@ The project SHALL pin exact stable versions of Python, development tools, and ru
 #### Scenario: Documented version pins
 
 - **WHEN** a developer opens project setup documentation or `pyproject.toml`
-- **THEN** they SHALL find exact pinned versions for Python 3.14.7, uv 0.12.10, ruff 0.16.6, pytest 9.1.1, import-linter 2.13, Pydantic 2.13.5, PyYAML 6.0.3, Pillow 12.3.0, and ollama 0.6.2
+- **THEN** they SHALL find exact pinned versions for Python 3.14.7, uv 0.12.10, ruff 0.16.6, pytest 9.1.1, import-linter 2.13, Pydantic 2.13.5, PyYAML 6.0.3, Pillow 12.3.0, ollama 0.6.2, and rich 14.3.2
 
 ### Requirement: Python dependency management
 
@@ -58,6 +58,25 @@ The project SHALL provide a single documented command that verifies the developm
 
 - **WHEN** a developer runs the environment verification command while Ollama is not running
 - **THEN** the command SHALL fail with a clear message indicating Ollama is unreachable
+
+### Requirement: Identification CLI commands
+
+The project SHALL provide documented CLI commands for environment verification, identification, and a demo run.
+
+#### Scenario: Identify from photo paths
+
+- **WHEN** a developer runs `plant-id identify --backend vlm --photos path/to/photo.jpg`
+- **THEN** the command SHALL print structured JSON to stdout and persist a run artifact
+
+#### Scenario: Demo command
+
+- **WHEN** a developer runs `plant-id demo --backend vlm` with the demo dataset present under `data/oxford102/`
+- **THEN** the command SHALL identify the bundled sample image using the configured species catalog
+
+#### Scenario: Quiet mode
+
+- **WHEN** a developer runs identify or demo with `--quiet`
+- **THEN** the command SHALL suppress CLI progress output on stderr
 
 ### Requirement: Hardware baseline gate
 
