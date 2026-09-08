@@ -5,8 +5,8 @@ import pytest
 from plant_id.domain.models import Observation
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.identification.vlm_ollama import VlmOllamaIdentificationRepository
+from plant_id.infrastructure.ollama.environment import verify_environment
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
-from plant_id.interfaces.cli.commands.verify_env import verify_environment
 
 
 def _project_root() -> Path:

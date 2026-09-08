@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from plant_id.infrastructure.config.settings import Settings
-from plant_id.interfaces.cli.commands.verify_env import verify_environment
+from plant_id.infrastructure.ollama.environment import verify_environment
 
 
 def test_verify_environment_fails_when_ollama_unreachable() -> None:
@@ -11,8 +11,11 @@ def test_verify_environment_fails_when_ollama_unreachable() -> None:
     assert any("unreachable" in message.lower() for message in result.messages)
 
 
-@patch("plant_id.interfaces.cli.commands.verify_env._fetch_ollama_version", return_value="0.33.3")
-@patch("plant_id.interfaces.cli.commands.verify_env.ollama.Client")
+@patch(
+    "plant_id.infrastructure.ollama.environment._fetch_ollama_version",
+    return_value="0.33.3",
+)
+@patch("plant_id.infrastructure.ollama.environment.ollama.Client")
 def test_verify_environment_succeeds_when_model_present(
     mock_client_cls: MagicMock,
     _mock_version: MagicMock,
@@ -28,8 +31,11 @@ def test_verify_environment_succeeds_when_model_present(
     assert any("ready" in message.lower() for message in result.messages)
 
 
-@patch("plant_id.interfaces.cli.commands.verify_env._fetch_ollama_version", return_value="0.33.3")
-@patch("plant_id.interfaces.cli.commands.verify_env.ollama.Client")
+@patch(
+    "plant_id.infrastructure.ollama.environment._fetch_ollama_version",
+    return_value="0.33.3",
+)
+@patch("plant_id.infrastructure.ollama.environment.ollama.Client")
 def test_verify_environment_fails_when_model_missing(
     mock_client_cls: MagicMock,
     _mock_version: MagicMock,
