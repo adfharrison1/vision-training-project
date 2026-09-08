@@ -1,156 +1,118 @@
 # UK Plant Identification
 
-Local-only plant identification learning project targeting the **Oxford 102 Flowers** benchmark (~102 UK flowering plant classes). Runtime inference uses local backends only — no Pl@ntNet or other external ID APIs at runtime.
+Identify flowering plants from photographs using a local vision-language model. Given 1–3 photos of one plant, the CLI returns ranked species predictions as JSON and saves a run record under `artifacts/`.
 
-OpenSpec change: `openspec/changes/uk-plant-id-poc/`
+Inference runs on your machine via Ollama. No cloud or third-party identification APIs are used at runtime.
 
-## Architecture
+## Quick start
 
-```text
-interfaces (CLI)  -->  composition  -->  application use cases
-                                              |
-                         domain (models + repository Protocols)
-                                              ^
-                         infrastructure (VLM repo, file repo, catalog)
-```
-
-| Layer | Role |
-|---|---|
-| **domain** | Models, repository interfaces — no outward imports |
-| **application** | `IdentifyPlantUseCase` — depends on repository ports only |
-| **infrastructure** | Ollama VLM repo, artifacts, Oxford 102 catalog |
-| **interfaces** | Thin CLI (`plant-id`) — parsing and wiring only |
-
-Swappable backends via `IdentificationRepository` (`--backend vlm` now; `--backend classical` later).
-
-**Runtime policy:** local Ollama + project code only. External APIs (Pl@ntNet) are eval-only in a later change.
-
-## Prerequisites
-
-| Tool | Version | Notes |
-|---|---|---|
-| macOS | recent | primary dev platform |
-| Python | 3.14.7 | `.python-version` |
-| [uv](https://docs.astral.sh/uv/) | 0.12.10+ | dependency management |
-| [Ollama](https://ollama.com/download) | 0.33.3+ | local VLM server |
-| Node | 24.13.1 | OpenSpec CLI only (see `.nvmrc`) |
-
-### Install uv
+**Requirements:** macOS, Python 3.14.7, [uv](https://docs.astral.sh/uv/), [Ollama](https://ollama.com/download) 0.33.3+.
 
 ```bash
+# Install uv (if needed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-```
 
-### Install Ollama
-
-Download from [ollama.com/download](https://ollama.com/download), start the app, then pull the candidate vision model:
-
-```bash
+# Install Ollama from ollama.com, start it, then:
 ollama pull qwen3-vl:8b
-```
 
-## Setup
-
-```bash
+# Project setup
 uv sync
 uv run plant-id verify-env
 ```
 
-## Pinned runtime libraries
+**Demo** (needs flower images in `data/flowers/` — see [Data](#data)):
 
-| Package | Version |
+```bash
+uv run plant-id demo --backend vlm
+```
+
+**Identify your own photos:**
+
+```bash
+uv run plant-id identify --backend vlm --photos /absolute/path/to/photo.jpg
+```
+
+Add `--quiet` to hide progress on stderr. Results go to stdout; artifacts to `artifacts/`.
+
+## CLI
+
+| Command | Purpose |
 |---|---|
-| Python | 3.14.7 |
-| pydantic | 2.13.5 |
-| pydantic-settings | 2.13.0 |
-| PyYAML | 6.0.3 |
-| Pillow | 12.3.0 |
-| ollama | 0.6.2 |
-
-Dev: ruff 0.16.6, pytest 9.1.1, import-linter 2.13
+| `plant-id verify-env` | Check Ollama is up and the vision model is installed |
+| `plant-id demo --backend vlm` | Identify the bundled sample image |
+| `plant-id identify --backend vlm --photos a.jpg` | Identify 1–3 comma-separated photo paths |
+| `plant-id identify --backend classical …` | Stub — not implemented yet |
 
 ## Configuration
 
-Environment variables (prefix `PLANT_ID_`):
+Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings).
 
 | Variable | Default | Description |
 |---|---|---|
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama base URL |
-| `VISION_MODEL` | `qwen3-vl:8b` | Locked after task 1.6 spike (Intel macOS) |
-| `UNCERTAINTY_THRESHOLD` | `0.5` | Below this, top prediction marked uncertain |
-| `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Closed-set label list for identification |
-| `ARTIFACTS_DIR` | `artifacts/` | JSON run artifacts |
+| `VISION_MODEL` | `qwen3-vl:8b` | Ollama vision model tag |
+| `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
+| `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |
+| `ARTIFACTS_DIR` | `artifacts/` | Where run JSON files are written |
 
-## Datasets
+## Data
 
-**Runtime species catalog (bundled):** `resources/species_catalog/default.txt` — one label per line. The default file is the Oxford 102 Flowers vocabulary; point `PLANT_ID_SPECIES_CATALOG_PATH` at another file to swap closed sets without code changes.
+**Species catalog (required):** `resources/species_catalog/default.txt` — closed-set labels sent to the model. Override with `PLANT_ID_SPECIES_CATALOG_PATH`.
 
-**Downloaded images (local, gitignored):** extract under `data/oxford102/` for eval, demo, and future training:
+**Images (optional):** for `demo`, eval, and training. Download [Oxford 102 Flowers](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/) and extract to `data/flowers/` (gitignored):
 
 ```text
-data/oxford102/
-├── jpg/              # image_00001.jpg …
+data/flowers/
+├── jpg/
 ├── imagelabels.mat
 └── setid.mat
 ```
 
-**Full dataset source:** [VGG Oxford 102 Flowers](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/) (train/val/test splits in `setid.mat`).
+## Architecture
 
-## Commands
+Layered Python package under `src/plant_id/`. Dependencies point inward: interfaces → application → domain ← infrastructure.
 
-```bash
-uv run plant-id verify-env          # Ollama + model check
-uv run plant-id demo --backend vlm  # sample image from data/oxford102/
-uv run plant-id identify --backend vlm --photos path/to/photo.jpg
-uv run ruff check .                 # lint
-uv run pytest                       # unit tests
-uv run lint-imports                 # layer boundaries (added in task 6.1)
-```
-
-Use `--quiet` to suppress CLI progress output on stderr.
-
-## Hardware spike (task 1.6) — complete
-
-**Decision (2026-09-08, Intel macOS):** keep default **`qwen3-vl:8b`**. No fallback model.
-
-| Metric | Observed |
-|---|---|
-| Ollama steady RAM | ~7 GB |
-| RAM spike during inference | ~+1 GB |
-| Latency | Second run ≥2× faster than first (cold model load) |
-| Vision quality | Correctly described photo content (not path guessing) |
-
-**CLI notes (Ollama 0.33.3):**
-
-- No `--image` flag — put an **absolute** `.jpg` path in the prompt (`~` is not expanded).
-- Use `--hidethinking` for smoke tests; the app will disable thinking for identification.
-- Production path uses the Python `ollama` client with an `images` array (task 4.2).
-
-```bash
-uv run plant-id verify-env
-
-# Manual vision smoke test (replace with your absolute path)
-ollama run qwen3-vl:8b --hidethinking \
-  "describe this image: /Users/you/.../data/oxford102/jpg/image_00001.jpg"
-```
-
-Task **4.2** (live VLM integration) is unblocked.
-
-## Project layout
+Backends implement `IdentificationRepository`. The VLM backend calls Ollama; a classical ML backend is planned. Species labels come from `SpeciesCatalogRepository`, wired in the composition root — not in the use case.
 
 ```text
-src/plant_id/
-  domain/           models, repository Protocols
-  application/      use cases
-  infrastructure/   repos, config, composition
-  interfaces/cli/   plant-id CLI
-resources/species_catalog/   bundled default.txt (Oxford 102 labels today)
-data/oxford102/              downloaded images + .mat splits (gitignored)
-eval/                eval-only code (Change 2); not runtime
+interfaces/cli     plant-id commands, CLI progress UI
+application        IdentifyPlantUseCase
+domain             models, repository ports, ApplicationEvents
+infrastructure     Ollama VLM repo, file artifacts, species catalog loader
+```
+
+## Development
+
+```bash
+uv run ruff check .
+uv run pytest                  # unit tests; integration test needs Ollama + sample image
+uv run pytest -m integration   # live Ollama test only
+```
+
+**Ground truth check** (requires `data/flowers/imagelabels.mat`):
+
+```bash
+uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg
+uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --identify
+```
+
+The second form runs VLM identification and reports whether top-1 matches the `.mat` label.
+
+Python interpreter: `.venv/bin/python` (created by `uv sync`).
+
+**Pinned versions:** Python 3.14.7, pydantic 2.13.5, ollama 0.6.2, rich 14.3.2 — full list in `pyproject.toml` / `uv.lock`.
+
+## Layout
+
+```text
+src/plant_id/           application code
+resources/species_catalog/
+data/                   downloaded datasets (gitignored)
+eval/                   offline evaluation (not used by the CLI)
 tests/
-openspec/           specifications and change plans
+artifacts/              run output (gitignored)
 ```
 
 ## License
 
-Learning project — no production license declared.
+No production license declared.
