@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     demo_parser = subparsers.add_parser(
         "demo",
-        help="Identify the default demo sample image (requires data/oxford102/).",
+        help="Identify the default demo sample image (requires data/flowers/).",
     )
     _add_backend_argument(demo_parser)
     _add_quiet_argument(demo_parser)

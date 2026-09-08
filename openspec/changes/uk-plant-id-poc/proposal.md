@@ -37,6 +37,6 @@ Oxford 102 Flowers provides free, pre-labelled, downloadable images with train/v
 
 - New layered package under `src/plant_id/`.
 - Default species catalog at `resources/species_catalog/default.txt` (Oxford 102 labels today); runtime code is dataset-agnostic.
-- Oxford 102 images under `data/oxford102/` for demo/eval/training only.
+- Oxford 102 images under `data/flowers/` for demo/eval/training only.
 - VLM as default `--backend vlm`; CLI progress via `ApplicationEvents` (Rich handler bound at CLI entry).
 - Architecture supports future `--backend classical` without use-case changes.

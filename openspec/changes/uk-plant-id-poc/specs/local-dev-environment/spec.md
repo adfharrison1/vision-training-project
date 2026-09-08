@@ -70,7 +70,7 @@ The project SHALL provide documented CLI commands for environment verification, 
 
 #### Scenario: Demo command
 
-- **WHEN** a developer runs `plant-id demo --backend vlm` with the demo dataset present under `data/oxford102/`
+- **WHEN** a developer runs `plant-id demo --backend vlm` with the demo dataset present under `data/flowers/`
 - **THEN** the command SHALL identify the bundled sample image using the configured species catalog
 
 #### Scenario: Quiet mode

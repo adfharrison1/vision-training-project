@@ -20,7 +20,7 @@ def test_vlm_repository_identifies_sample_image() -> None:
         pytest.skip(env.messages[-1])
 
     settings = Settings()
-    sample_image = _project_root() / "data" / "oxford102" / "jpg" / "image_00001.jpg"
+    sample_image = _project_root() / "data" / "flowers" / "jpg" / "image_00001.jpg"
     if not sample_image.is_file():
         pytest.skip(f"Sample image not found: {sample_image}")
 

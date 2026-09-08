@@ -142,7 +142,7 @@ def build_identify_use_case(backend: Literal["vlm", "classical"], settings: Sett
 
 **Catalog injection:** `IdentifyPlantUseCase` does **not** depend on `SpeciesCatalogRepository`. The composition root builds `FileSpeciesCatalog` once and injects it into identification repository implementations that need closed-set labels (VLM prompts now; classical ML label mapping later).
 
-**Dataset agnostic runtime:** Application and domain code MUST NOT reference Oxford 102 or other benchmark names. The default bundled catalog (`resources/species_catalog/default.txt`) happens to contain the Oxford 102 vocabulary today; swap via `PLANT_ID_SPECIES_CATALOG_PATH` without code changes. Downloaded images under `data/oxford102/` are for eval/demo/training only.
+**Dataset agnostic runtime:** Application and domain code MUST NOT reference Oxford 102 or other benchmark names. The default bundled catalog (`resources/species_catalog/default.txt`) happens to contain the Oxford 102 vocabulary today; swap via `PLANT_ID_SPECIES_CATALOG_PATH` without code changes. Downloaded images under `data/flowers/` are for eval/demo/training only.
 
 CLI:
 
@@ -179,7 +179,7 @@ resources/
     └── default.txt            # closed-set labels; Oxford 102 vocabulary today
 
 data/                          # gitignored; benchmark datasets for eval/training/demo
-└── oxford102/
+└── flowers/
     └── jpg/ …
 
 src/plant_id/
@@ -325,7 +325,7 @@ VLM repository emits four numbered stages (validate, build prompt, Ollama call w
 |---|---|
 | Layer boundary enforcement | **`import-linter` 2.13** with `.importlinter` contracts |
 | Species catalog | **`SpeciesCatalogRepository` port** + **`FileSpeciesCatalog`**; inject via composition (not into use case); path via `Settings.species_catalog_path` |
-| Species labels | Bundled **`resources/species_catalog/default.txt`** (Oxford 102 vocabulary today); swap file via env; **`data/oxford102/`** for images/eval only |
+| Species labels | Bundled **`resources/species_catalog/default.txt`** (Oxford 102 vocabulary today); swap file via env; **`data/flowers/`** for images/eval only |
 | Application events | **`ApplicationEvents` port** with context binding; Rich handler in CLI only; infra emits stages via `log_*` helpers |
 | Uncertainty flag | Prompt-requested per-prediction confidence + `Settings.uncertainty_threshold`; reassess alternatives at task 4.2 |
 | Hardware / model | **`qwen3-vl:8b` locked** after task 1.6 spike (Intel macOS); use `images` array + absolute paths in VLM repo |

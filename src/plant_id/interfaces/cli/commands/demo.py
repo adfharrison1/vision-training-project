@@ -15,7 +15,7 @@ def _project_root() -> Path:
 
 
 def default_demo_image() -> Path:
-    return _project_root() / "data" / "oxford102" / "jpg" / "image_00001.jpg"
+    return _project_root() / "data" / "flowers" / "jpg" / "image_00001.jpg"
 
 
 def run_demo(
@@ -27,7 +27,7 @@ def run_demo(
     sample_image = default_demo_image()
     if not sample_image.is_file():
         print(f"Demo image not found: {sample_image}", file=sys.stderr)
-        print("Download dataset images to data/oxford102/ (see README).", file=sys.stderr)
+        print("Download dataset images to data/flowers/ (see README).", file=sys.stderr)
         return 1
 
     return run_identify(
