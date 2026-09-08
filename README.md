@@ -70,21 +70,38 @@ data/flowers/
 
 ## Architecture
 
-Layered Python package under `src/plant_id/`. Dependencies point inward: interfaces → application → domain ← infrastructure.
-
-Backends implement `IdentificationRepository`. The VLM backend calls Ollama; a classical ML backend is planned. Species labels come from `SpeciesCatalogRepository`, wired in the composition root — not in the use case.
+Layered Python package under `src/plant_id/`. Dependencies point inward:
 
 ```text
-interfaces/cli     plant-id commands, CLI progress UI
-application        IdentifyPlantUseCase
-domain             models, repository ports, ApplicationEvents
-infrastructure     Ollama VLM repo, file artifacts, species catalog loader
+interfaces/cli  →  application  →  domain  ←  infrastructure
+                         ↑
+              composition wires backends here
 ```
+
+| Layer | Responsibility | Must not import |
+|---|---|---|
+| **domain** | Models, repository ports (`IdentificationRepository`, …), `ApplicationEvents` | application, infrastructure, interfaces |
+| **application** | `IdentifyPlantUseCase` — orchestrates identify + persist | infrastructure, interfaces |
+| **infrastructure** | Ollama VLM repo, file artifacts, species catalog, settings | interfaces |
+| **interfaces** | CLI parsing, wiring, Rich progress UI | direct `ollama` calls (use infrastructure) |
+
+**Repository pattern:** backends implement `IdentificationRepository`. The use case depends on the port only, so swapping `--backend vlm` for `--backend classical` does not change application code.
+
+**Catalog injection:** closed-set labels come from `SpeciesCatalogRepository`. The composition root (`infrastructure/composition/container.py`) builds `FileSpeciesCatalog` and injects it into identification repos — the use case never sees the catalog.
+
+**Adding a classical backend later:**
+
+1. Implement `IdentificationRepository` in `infrastructure/identification/` (train/load model, map outputs to catalog labels).
+2. Register it in `build_identify_use_case()` beside the VLM repo.
+3. Keep returning the same `ObservationResult` schema for eval metrics.
+
+Layer boundaries are enforced by `import-linter` — see [Development](#development).
 
 ## Development
 
 ```bash
 uv run ruff check .
+uv run lint-imports            # layer boundary contracts (.importlinter)
 uv run pytest                  # unit tests; integration test needs Ollama + sample image
 uv run pytest -m integration   # live Ollama test only
 ```
