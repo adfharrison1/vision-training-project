@@ -1,0 +1,64 @@
+## Purpose
+
+Define layered application structure with repository interfaces so identification backends (VLM, classical ML) swap without changing domain models or use cases.
+
+## ADDED Requirements
+
+### Requirement: Layer boundaries
+
+The codebase SHALL be organised into domain, application, infrastructure, and interfaces layers with strict inward dependency direction.
+
+#### Scenario: Domain independence
+
+- **WHEN** a developer inspects the domain layer
+- **THEN** it SHALL contain models and repository interfaces only and SHALL NOT import from application, infrastructure, or interfaces layers
+
+#### Scenario: Application depends on domain abstractions
+
+- **WHEN** a developer inspects application use cases
+- **THEN** they SHALL depend on domain models and repository interfaces only, not concrete infrastructure implementations
+
+### Requirement: Identification repository port
+
+The domain layer SHALL define an `IdentificationRepository` interface (protocol) that accepts an `Observation` and returns an `ObservationResult`.
+
+#### Scenario: Swappable backend contract
+
+- **WHEN** a new identification backend is added
+- **THEN** it SHALL implement `IdentificationRepository` without modifying the `IdentifyPlantUseCase` application logic
+
+### Requirement: Composition at the boundary
+
+Backend selection and dependency wiring SHALL occur in a composition module or interfaces entrypoint, not inside use cases. Species catalog implementations SHALL be injected into identification repositories at composition time, not passed to the use case directly.
+
+#### Scenario: CLI backend flag
+
+- **WHEN** a developer runs identify with `--backend vlm`
+- **THEN** the CLI SHALL wire the VLM repository implementation (with injected species catalog) into the use case before execution
+
+### Requirement: Shared result model across backends
+
+All identification repository implementations SHALL return the same `ObservationResult` domain model.
+
+#### Scenario: Backend-agnostic output
+
+- **WHEN** identification succeeds via any runtime backend
+- **THEN** the result SHALL use the shared prediction schema suitable for Oxford 102 eval metrics
+
+### Requirement: Runtime repository local-only
+
+Runtime `IdentificationRepository` implementations SHALL NOT call external plant identification APIs.
+
+#### Scenario: VLM repository isolation
+
+- **WHEN** the VLM repository executes
+- **THEN** it SHALL communicate only with local Ollama and project prompt/RAG assets
+
+### Requirement: Eval adapters separate from repository port
+
+External comparison services (e.g. Pl@ntNet API) SHALL live in eval/benchmark modules and SHALL NOT implement `IdentificationRepository`.
+
+#### Scenario: Eval baseline separation
+
+- **WHEN** an eval baseline adapter is added in a later change
+- **THEN** it SHALL remain outside the runtime repository interface hierarchy
