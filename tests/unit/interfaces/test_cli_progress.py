@@ -1,22 +1,57 @@
-from plant_id.infrastructure.config.settings import Settings
-from plant_id.interfaces.cli.progress import identification_progress
+from unittest.mock import MagicMock, patch
+
+from plant_id.domain.models import ObservationResult, Prediction
+from plant_id.interfaces.cli.presentation import identify_with_cli_presentation
 
 
-def test_identification_progress_plain_mode_writes_stages(capsys) -> None:
-    settings = Settings()
+def _sample_result() -> ObservationResult:
+    return ObservationResult(
+        observation_id="obs-1",
+        predictions=(
+            Prediction(
+                rank=1,
+                species_label="pink primrose",
+                evidence="five petals",
+                confidence=0.9,
+            ),
+        ),
+        model_tag="vlm:test",
+        prompt_version="closed-set-v1",
+    )
 
-    with identification_progress("vlm", 1, settings, quiet=False):
-        pass
 
+@patch("plant_id.interfaces.composition.identify.build_identify_use_case")
+def test_identify_with_cli_presentation_writes_stages(
+    mock_build: MagicMock,
+    capsys,
+) -> None:
+    mock_build.return_value.execute.return_value = _sample_result()
+
+    outcome = identify_with_cli_presentation(
+        "vlm",
+        ["photo.jpg"],
+        "obs-1",
+        quiet=False,
+    )
+
+    assert outcome.exit_code == 0
     stderr = capsys.readouterr().err
     assert "Identifying with vlm backend" in stderr
     assert "Identification complete" in stderr
 
 
-def test_identification_progress_quiet_is_silent(capsys) -> None:
-    settings = Settings()
+@patch("plant_id.interfaces.composition.identify.build_identify_use_case")
+def test_identify_with_cli_presentation_quiet_is_silent(
+    mock_build: MagicMock,
+    capsys,
+) -> None:
+    mock_build.return_value.execute.return_value = _sample_result()
 
-    with identification_progress("vlm", 1, settings, quiet=True):
-        pass
+    identify_with_cli_presentation(
+        "vlm",
+        ["photo.jpg"],
+        "obs-1",
+        quiet=True,
+    )
 
     assert capsys.readouterr().err == ""

@@ -4,15 +4,15 @@ from unittest.mock import patch
 
 import pytest
 
-from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import ObservationResult, Prediction
 from plant_id.interfaces.cli.commands.demo import default_demo_image, run_demo
 from plant_id.interfaces.cli.commands.identify import run_identify
+from plant_id.interfaces.composition import IdentifyRunResult
 
 
-def test_run_identify_quiet_suppresses_progress(capsys) -> None:
-    result = ObservationResult(
-        observation_id="obs-1",
+def _sample_result(observation_id: str = "obs-1") -> ObservationResult:
+    return ObservationResult(
+        observation_id=observation_id,
         predictions=(
             Prediction(
                 rank=1,
@@ -24,11 +24,12 @@ def test_run_identify_quiet_suppresses_progress(capsys) -> None:
         model_tag="vlm:test",
         prompt_version="closed-set-v1",
     )
-    fake_use_case = type("FakeUseCase", (), {"execute": lambda self, obs: result})()
 
+
+def test_run_identify_quiet_suppresses_progress(capsys) -> None:
     with patch(
-        "plant_id.interfaces.cli.commands.identify.build_identify_use_case",
-        return_value=fake_use_case,
+        "plant_id.interfaces.cli.commands.identify.identify_with_cli_presentation",
+        return_value=IdentifyRunResult(exit_code=0, result=_sample_result()),
     ):
         exit_code = run_identify("vlm", photos="photo.jpg", observation_id="obs-1", quiet=True)
 
@@ -37,43 +38,22 @@ def test_run_identify_quiet_suppresses_progress(capsys) -> None:
 
 
 def test_run_identify_prints_json_result(capsys) -> None:
-    result = ObservationResult(
-        observation_id="obs-1",
-        predictions=(
-            Prediction(
-                rank=1,
-                species_label="pink primrose",
-                evidence="five petals",
-                confidence=0.9,
-            ),
-        ),
-        model_tag="vlm:test",
-        prompt_version="closed-set-v1",
-    )
-    fake_use_case = type("FakeUseCase", (), {"execute": lambda self, obs: result})()
-
     with patch(
-        "plant_id.interfaces.cli.commands.identify.build_identify_use_case",
-        return_value=fake_use_case,
+        "plant_id.interfaces.cli.commands.identify.identify_with_cli_presentation",
+        return_value=IdentifyRunResult(exit_code=0, result=_sample_result()),
     ):
         exit_code = run_identify("vlm", photos="photo.jpg", observation_id="obs-1")
 
     assert exit_code == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["observation_id"] == "obs-1"
-    assert payload["predictions"][0]["species_label"] == "pink primrose"
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["observation_id"] == "obs-1"
+    assert printed["predictions"][0]["species_label"] == "pink primrose"
 
 
 def test_run_identify_reports_identification_error(capsys) -> None:
-    fake_use_case = type(
-        "FakeUseCase",
-        (),
-        {"execute": lambda self, obs: (_ for _ in ()).throw(IdentificationError("parse failed"))},
-    )()
-
     with patch(
-        "plant_id.interfaces.cli.commands.identify.build_identify_use_case",
-        return_value=fake_use_case,
+        "plant_id.interfaces.cli.commands.identify.identify_with_cli_presentation",
+        return_value=IdentifyRunResult(exit_code=1, error_message="parse failed"),
     ):
         exit_code = run_identify("vlm", photos="photo.jpg")
 

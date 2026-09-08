@@ -5,9 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from plant_id.infrastructure.composition.container import Backend
-from plant_id.infrastructure.config.settings import Settings
 from plant_id.interfaces.cli.commands.identify import run_identify
+from plant_id.interfaces.composition import Backend, Settings, load_settings
 
 
 def _project_root() -> Path:
@@ -23,7 +22,7 @@ def run_demo(
     settings: Settings | None = None,
     quiet: bool = False,
 ) -> int:
-    settings = settings or Settings()
+    settings = settings or load_settings()
     sample_image = default_demo_image()
     if not sample_image.is_file():
         print(f"Demo image not found: {sample_image}", file=sys.stderr)

@@ -5,10 +5,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-from plant_id.infrastructure.composition.container import Backend
 from plant_id.interfaces.cli.commands.demo import run_demo
 from plant_id.interfaces.cli.commands.identify import run_identify
 from plant_id.interfaces.cli.commands.verify_env import run_verify_env
+from plant_id.interfaces.composition import Backend
 
 
 def _add_backend_argument(parser: argparse.ArgumentParser) -> None:

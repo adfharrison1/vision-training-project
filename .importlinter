@@ -21,11 +21,29 @@ forbidden_modules =
     plant_id.infrastructure
     plant_id.interfaces
 
-[importlinter:contract:interfaces-thin]
-name = Thin interfaces
+[importlinter:contract:infrastructure-independence]
+name = Infrastructure independence
 type = forbidden
 source_modules =
-    plant_id.interfaces
+    plant_id.infrastructure
 forbidden_modules =
-    ollama
+    plant_id.application
+    plant_id.interfaces
+
+[importlinter:contract:interfaces-cli-independence]
+name = Interfaces CLI independence
+type = forbidden
+source_modules =
+    plant_id.interfaces.cli
+forbidden_modules =
+    plant_id.infrastructure
+allow_indirect_imports = true
+
+[importlinter:contract:interfaces-cli-domain-independence]
+name = Interfaces CLI domain independence
+type = forbidden
+source_modules =
+    plant_id.interfaces.cli
+forbidden_modules =
+    plant_id.domain
 allow_indirect_imports = true

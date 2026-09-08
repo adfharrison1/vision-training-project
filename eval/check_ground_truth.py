@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
 from eval.oxford102_ground_truth import default_labels_mat_path, ground_truth_species_label
-from plant_id.domain.models import Observation
-from plant_id.infrastructure.composition.container import build_identify_use_case
-from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
-from plant_id.interfaces.cli.progress import identification_progress
+from plant_id.interfaces.cli.presentation import identify_with_cli_presentation
+from plant_id.interfaces.composition import load_settings
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Photo not found: {photo_path}", file=sys.stderr)
         return 1
 
-    settings = Settings()
+    settings = load_settings()
     labels_mat = args.labels_mat or default_labels_mat_path()
     catalog = FileSpeciesCatalog(settings.species_catalog_path)
     class_names = catalog.list_class_names()
@@ -69,23 +66,26 @@ def main(argv: list[str] | None = None) -> int:
     if not args.identify:
         return 0
 
-    observation = Observation(
-        observation_id=f"ground-truth-check-{photo_path.stem}",
-        photo_paths=[photo_path],
+    outcome = identify_with_cli_presentation(
+        "vlm",
+        [photo_path],
+        f"ground-truth-check-{photo_path.stem}",
+        settings,
+        quiet=args.quiet,
     )
-    use_case = build_identify_use_case("vlm", settings)
-    try:
-        with identification_progress("vlm", 1, settings, quiet=args.quiet):
-            result = use_case.execute(observation)
-    except Exception as exc:
-        print(f"Identification failed: {exc}", file=sys.stderr)
+    if outcome.error_message:
+        print(f"Identification failed: {outcome.error_message}", file=sys.stderr)
+        return 1
+    if outcome.result is None:
+        print("Identification failed: no result returned.", file=sys.stderr)
         return 1
 
-    top_prediction = result.predictions[0].species_label
+    top_prediction = outcome.result.predictions[0].species_label
     match = top_prediction == ground_truth
     print(f"Predicted (top-1): {top_prediction}")
     print(f"Match: {'yes' if match else 'no'}")
-    print(json.dumps(result.model_dump(mode="json"), indent=2))
+    if outcome.output_json:
+        print(outcome.output_json)
     return 0 if match else 2
 
 

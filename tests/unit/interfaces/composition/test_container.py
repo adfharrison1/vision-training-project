@@ -4,10 +4,10 @@ import pytest
 
 from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation
-from plant_id.infrastructure.composition.container import build_identify_use_case
 from plant_id.infrastructure.identification.classical_ml import ClassicalMlIdentificationRepository
 from plant_id.infrastructure.identification.vlm_ollama import VlmOllamaIdentificationRepository
 from plant_id.infrastructure.persistence.file_artifacts import FileArtifactRepository
+from plant_id.interfaces.composition import build_identify_use_case
 
 
 def test_build_vlm_use_case_wires_vlm_repository() -> None:
