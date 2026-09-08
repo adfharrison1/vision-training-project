@@ -76,47 +76,65 @@ Environment variables (prefix `PLANT_ID_`):
 | Variable | Default | Description |
 |---|---|---|
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama base URL |
-| `VISION_MODEL` | `qwen3-vl:8b` | Model tag (confirm via hardware spike) |
+| `VISION_MODEL` | `qwen3-vl:8b` | Locked after task 1.6 spike (Intel macOS) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Below this, top prediction marked uncertain |
-| `CLASS_NAMES_PATH` | `resources/oxford102/class_names.txt` | Oxford 102 label list |
+| `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Closed-set label list for identification |
 | `ARTIFACTS_DIR` | `artifacts/` | JSON run artifacts |
 
-## Oxford 102 data
+## Datasets
 
-**Demo / closed-set labels:** bundled `resources/oxford102/class_names.txt` (added in a later task).
+**Runtime species catalog (bundled):** `resources/species_catalog/default.txt` — one label per line. The default file is the Oxford 102 Flowers vocabulary; point `PLANT_ID_SPECIES_CATALOG_PATH` at another file to swap closed sets without code changes.
 
-**Full eval dataset (optional until Change 2):** download Oxford 102 Flowers from the [VGG page](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/) for train/val/test splits and labelled images.
+**Downloaded images (local, gitignored):** extract under `data/oxford102/` for eval, demo, and future training:
+
+```text
+data/oxford102/
+├── jpg/              # image_00001.jpg …
+├── imagelabels.mat
+└── setid.mat
+```
+
+**Full dataset source:** [VGG Oxford 102 Flowers](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/) (train/val/test splits in `setid.mat`).
 
 ## Commands
 
 ```bash
 uv run plant-id verify-env          # Ollama + model check
+uv run plant-id demo --backend vlm  # sample image from data/oxford102/
+uv run plant-id identify --backend vlm --photos path/to/photo.jpg
 uv run ruff check .                 # lint
 uv run pytest                       # unit tests
 uv run lint-imports                 # layer boundaries (added in task 6.1)
 ```
 
-Identification commands (`identify`, `demo`) arrive in a later implementation phase.
+Use `--quiet` to suppress CLI progress output on stderr.
 
-## Hardware spike (task 1.6)
+## Hardware spike (task 1.6) — complete
 
-Before live VLM integration (task 4.2), run this manual spike on **your** machine:
+**Decision (2026-09-08, Intel macOS):** keep default **`qwen3-vl:8b`**. No fallback model.
 
-1. Install Ollama 0.33.3+ and run `ollama pull qwen3-vl:8b`
-2. Pick one Oxford 102 sample image (or any clear flower photo for a smoke test)
-3. Record:
-   - Wall-clock latency for one identification-sized request
-   - Peak RAM during inference (Activity Monitor)
-   - Subjective output quality (does the model follow JSON instructions?)
-4. If `qwen3-vl:8b` is too slow or heavy on Intel hardware, try a smaller vision model, set `PLANT_ID_VISION_MODEL`, and document the choice here
+| Metric | Observed |
+|---|---|
+| Ollama steady RAM | ~7 GB |
+| RAM spike during inference | ~+1 GB |
+| Latency | Second run ≥2× faster than first (cold model load) |
+| Vision quality | Correctly described photo content (not path guessing) |
+
+**CLI notes (Ollama 0.33.3):**
+
+- No `--image` flag — put an **absolute** `.jpg` path in the prompt (`~` is not expanded).
+- Use `--hidethinking` for smoke tests; the app will disable thinking for identification.
+- Production path uses the Python `ollama` client with an `images` array (task 4.2).
 
 ```bash
-# Quick connectivity check (full identify flow comes later)
 uv run plant-id verify-env
-ollama run qwen3-vl:8b "Describe this flower in one sentence." --verbose
+
+# Manual vision smoke test (replace with your absolute path)
+ollama run qwen3-vl:8b --hidethinking \
+  "describe this image: /Users/you/.../data/oxford102/jpg/image_00001.jpg"
 ```
 
-Update `PLANT_ID_VISION_MODEL` / README only after the spike passes.
+Task **4.2** (live VLM integration) is unblocked.
 
 ## Project layout
 
@@ -126,8 +144,9 @@ src/plant_id/
   application/      use cases
   infrastructure/   repos, config, composition
   interfaces/cli/   plant-id CLI
-resources/oxford102/
-eval/               eval-only code (Change 2); not runtime
+resources/species_catalog/   bundled default.txt (Oxford 102 labels today)
+data/oxford102/              downloaded images + .mat splits (gitignored)
+eval/                eval-only code (Change 2); not runtime
 tests/
 openspec/           specifications and change plans
 ```
