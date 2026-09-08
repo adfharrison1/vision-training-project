@@ -73,21 +73,23 @@ data/flowers/
 Layered Python package under `src/plant_id/`. Dependencies point inward:
 
 ```text
-interfaces/cli  →  application  →  domain  ←  infrastructure
-                         ↑
-              composition wires backends here
+interfaces/cli       →  application, interfaces/composition
+interfaces/composition  →  application, domain, infrastructure  (wiring + orchestration)
+application          →  domain
+infrastructure       →  domain
 ```
 
 | Layer | Responsibility | Must not import |
 |---|---|---|
 | **domain** | Models, repository ports (`IdentificationRepository`, …), `ApplicationEvents` | application, infrastructure, interfaces |
 | **application** | `IdentifyPlantUseCase` — orchestrates identify + persist | infrastructure, interfaces |
-| **infrastructure** | Ollama VLM repo, file artifacts, species catalog, settings | interfaces |
-| **interfaces** | CLI parsing, wiring, Rich progress UI | direct `ollama` calls (use infrastructure) |
+| **infrastructure** | Ollama VLM repo, file artifacts, species catalog, settings | application, interfaces |
+| **interfaces/cli** | Argument parsing, printing, Rich presentation | domain, infrastructure (use `interfaces/composition`) |
+| **interfaces/composition** | Wires backends; builds observations; runs use cases | — (outer shell; shared by CLI and future HTTP) |
 
 **Repository pattern:** backends implement `IdentificationRepository`. The use case depends on the port only, so swapping `--backend vlm` for `--backend classical` does not change application code.
 
-**Catalog injection:** closed-set labels come from `SpeciesCatalogRepository`. The composition root (`infrastructure/composition/container.py`) builds `FileSpeciesCatalog` and injects it into identification repos — the use case never sees the catalog.
+**Catalog injection:** closed-set labels come from `SpeciesCatalogRepository`. The composition root (`interfaces/composition/container.py`) builds `FileSpeciesCatalog` and injects it into identification repos — the use case never sees the catalog.
 
 **Adding a classical backend later:**
 
