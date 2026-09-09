@@ -74,6 +74,21 @@ CLI commands call **`identify_with_cli_presentation`** in `interfaces/cli/presen
 
 Domain port in `domain/application_events.py`. Infrastructure emits `log_stage` / `log_wait`; default is noop. CLI binds `RichApplicationEvents` via composition + presentation — infrastructure must not import Rich.
 
+## Observability (optional, local-only)
+
+Self-hosted [Opik](https://www.comet.com/docs/opik/self-host/local_deployment) traces Ollama VLM calls from `infrastructure/observability/`. **Default off.** No Comet cloud — do not set `OPIK_API_KEY`.
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # fresh terminals may need this for uv
+# Start Opik (Docker): ./scripts/opik.sh up — UI at http://localhost:5173
+export PLANT_ID_OPIK_ENABLED=true
+uv run plant-id identify --backend vlm --photos /path/to/your/photo.jpg
+```
+
+Tracing uses session config only — **never** call `opik.configure()` from plant-id (it prompts to install Opik MCP in Cursor/VS Code and can hang identify). If you already answered **y** to that prompt, Ctrl+C and re-run; optional cleanup: remove the `opik` entry from `~/.cursor/mcp.json` if you do not want it.
+
+Tracing code MUST stay in infrastructure only — domain, application, and CLI must not import Opik. `ApplicationEvents` / Rich progress is unchanged.
+
 ## Eval boundary
 
 Code under **`eval/`** is benchmark-only. It may import runtime/composition for comparisons but must **not** be imported by `IdentifyPlantUseCase`, CLI, or infrastructure repos. External APIs (Pl@ntNet) belong in eval only.
@@ -84,7 +99,7 @@ Code under **`eval/`** is benchmark-only. It may import runtime/composition for 
 - Pin versions in `pyproject.toml` / `uv.lock`; bump deliberately.
 - Match existing layer placement; never fix import-linter violations by weakening `.importlinter`.
 - Species catalog: `resources/species_catalog/default.txt`; images for demo/eval: `data/flowers/` (gitignored).
-- OpenSpec change in progress: `openspec/changes/uk-plant-id-poc/`. Planning artifacts live there; do not copy OpenSpec into code comments.
+- OpenSpec change in progress: `openspec/changes/local-opik-observability/`. Planning artifacts live there; do not copy OpenSpec into code comments.
 - Prefer minimal diffs; no DI framework — manual composition in `interfaces/composition/`.
 
 ## Key paths
@@ -92,7 +107,7 @@ Code under **`eval/`** is benchmark-only. It may import runtime/composition for 
 ```text
 src/plant_id/domain/              models, ports, ApplicationEvents
 src/plant_id/application/         IdentifyPlantUseCase
-src/plant_id/infrastructure/      VLM repo, artifacts, catalog, settings, Ollama env check
+src/plant_id/infrastructure/      VLM repo, artifacts, catalog, settings, Opik tracing, Ollama env check
 src/plant_id/interfaces/composition/   wiring + execute_identify
 src/plant_id/interfaces/cli/        plant-id entrypoint
 eval/                               offline eval (check_ground_truth.py)

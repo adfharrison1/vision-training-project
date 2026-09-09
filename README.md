@@ -54,6 +54,57 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |
 | `ARTIFACTS_DIR` | `artifacts/` | Where run JSON files are written |
+| `OPIK_ENABLED` | `false` | Export Ollama traces to local Opik (self-hosted only) |
+| `OPIK_BASE_URL` | `http://127.0.0.1:5173/api` | Local Opik API URL — do not point at Comet cloud |
+| `OPIK_PROJECT_NAME` | `plant-id` | Opik project for identification traces |
+
+## Observability (optional)
+
+For debugging VLM calls during development, you can run [Opik](https://www.comet.com/docs/opik/self-host/local_deployment) locally via the project Docker Compose wrapper. Traces stay on your machine — no Comet cloud account or API key.
+
+**Start Opik** (requires Docker — on macOS, [Colima](https://github.com/abiosoft/colima) works well):
+
+```bash
+colima start --cpu 4 --memory 8   # see resource notes below — default 2 GiB is too small
+./scripts/opik.sh up
+./scripts/opik.sh status          # wait until services are healthy (first boot: several minutes)
+```
+
+If `docker` is not found, install/link the CLI: `brew install docker colima && brew link docker`.
+
+The UI is at [http://localhost:5173](http://localhost:5173). SDK API base: `http://127.0.0.1:5173/api`.
+
+On first run, `./scripts/opik.sh` clones the pinned Opik release into `docker/opik/.upstream/` (gitignored). Stop with `./scripts/opik.sh down`. Server image tag is pinned in `docker/opik/.env` (`OPIK_VERSION=2.2.56`).
+
+**Resource use (Colima / Docker)** — Opik is optional and heavy; plant identification via Ollama does **not** need it.
+
+| Resource | Typical impact |
+|---|---|
+| **Colima VM RAM** | Opik needs **≥ 8 GiB** allocated to Colima (`colima start --memory 8`). The default **2 GiB** VM tends to hang on backend migrations. |
+| **Colima VM disk** | Docker images and volumes live under `~/.colima/` — often **10–15 GiB+** once Opik is pulled (macOS may show this as a Lima/`limactl` VM). |
+| **CPU** | First Opik start runs MySQL + ClickHouse + Java backend migrations; allow **5–15 minutes** on first boot. `./scripts/opik.sh status` until `backend` and `frontend` are healthy. |
+| **Ollama (separate)** | The VLM (`qwen3-vl:8b`) uses additional RAM/CPU outside Docker — keep Opik off when you only need `plant-id identify`. |
+
+Stop when not tracing to free memory:
+
+```bash
+./scripts/opik.sh down   # stop Opik containers (keeps volumes/images)
+colima stop              # stop the Linux VM (keeps ~/.colima disk)
+```
+
+To reclaim disk: `docker system prune -a` (inside a running Colima), or `colima delete` to remove the whole VM (you would run `colima start …` again later).
+
+**Enable tracing** for a run:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # if uv is not on PATH in a fresh terminal
+export PLANT_ID_OPIK_ENABLED=true
+uv run plant-id identify --backend vlm --photos /path/to/your/photo.jpg
+```
+
+On first enable, Opik logs a one-line confirmation that traces go to the `plant-id` project — that is normal. **Do not** run `opik configure` interactively for this project; if Opik asks to register an MCP server in Cursor/VS Code, answer **N** (the plant-id CLI configures tracing silently and must not block on editor setup).
+
+Open the Opik UI to inspect latency, token counts, prompts, and model output. Tracing is **off by default** — identification works without Opik running. CLI progress (`ApplicationEvents`) is unchanged.
 
 ## Data
 
@@ -119,7 +170,7 @@ The second form runs VLM identification and reports whether top-1 matches the `.
 
 Python interpreter: `.venv/bin/python` (created by `uv sync`).
 
-**Pinned versions:** Python 3.14.7, pydantic 2.13.5, ollama 0.6.2, rich 14.3.2 — full list in `pyproject.toml` / `uv.lock`.
+**Pinned versions:** Python 3.14.7, pydantic 2.13.5, ollama 0.6.2, opik 2.2.56, rich 14.3.2 — full list in `pyproject.toml` / `uv.lock`.
 
 ## Layout
 
