@@ -42,4 +42,4 @@
 
 ## 7. Agentic coding (end of phase)
 
-- [ ] 7.1 Update AGENTS.md/CLAUDE.md with layer rules, repository ports, composition/catalog injection, import-linter, and CLI commands; verify agent can run demo from docs alone
+- [x] 7.1 Update AGENTS.md/CLAUDE.md with layer rules, repository ports, composition/catalog injection, import-linter, and CLI commands; verify agent can run demo from docs alone
