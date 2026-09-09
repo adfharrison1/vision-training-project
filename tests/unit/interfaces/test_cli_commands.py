@@ -68,6 +68,11 @@ def test_run_identify_rejects_invalid_photo_count(capsys) -> None:
     assert "1 to 3" in capsys.readouterr().err
 
 
+def test_default_demo_image_points_at_project_data_path() -> None:
+    root = Path(__file__).resolve().parents[3]
+    assert default_demo_image() == root / "data" / "flowers" / "jpg" / "image_00001.jpg"
+
+
 def test_run_demo_skips_when_sample_missing(capsys, tmp_path: Path) -> None:
     with patch(
         "plant_id.interfaces.cli.commands.demo.default_demo_image",

@@ -10,7 +10,7 @@ from plant_id.interfaces.composition import Backend, Settings, load_settings
 
 
 def _project_root() -> Path:
-    return Path(__file__).resolve().parents[4]
+    return Path(__file__).resolve().parents[5]
 
 
 def default_demo_image() -> Path:
