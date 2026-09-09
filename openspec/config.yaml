@@ -32,6 +32,9 @@ context: |
     not cloud LLMs
   - External services (e.g. Pl@ntNet API) MAY be used ONLY in optional eval/
     benchmark adapters — never in IdentifyPlantUseCase or runtime repositories
+  - LLM observability (traces, prompts, responses) MUST use self-hosted Opik
+    on the developer machine when enabled — NO Comet cloud or external telemetry
+    backends; default off so identification works without Opik running
 
   Stack (current direction):
   - Python 3.14.7 (pinned in `.python-version`; managed via uv)
@@ -54,16 +57,18 @@ context: |
     quota/cost makes it impractical
 
   Planned change sequence (indicative — revise at planning time):
-  1. uk-plant-id-poc           — layered app + VLM repository [active]
-  2. eval-dataset-baseline     — Oxford 102 eval + optional Pl@ntNet comparison [stub]
-  3. classical-ml-backend      — train/serve sklearn/torch repo on Oxford 102 [stub]
-  4. direct-species-rag        — species sheets via direct lookup (VLM path) [stub]
-  5. vector-retrieval          — semantic retrieval [stub]
-  6. improvement-loop-service  — experiment loop + local service [stub]
-  7. fine-tuning-investigation — optional [stub]
+  1. uk-plant-id-poc           — layered app + VLM repository [complete]
+  2. local-opik-observability  — self-hosted Opik tracing for Ollama calls [planned]
+  3. eval-dataset-baseline     — Oxford 102 eval + optional Pl@ntNet comparison [stub]
+  4. classical-ml-backend      — train/serve sklearn/torch repo on Oxford 102 [stub]
+  5. direct-species-rag        — species sheets via direct lookup (VLM path) [stub]
+  6. vector-retrieval          — semantic retrieval [stub]
+  7. improvement-loop-service  — experiment loop + local service [stub]
+  8. fine-tuning-investigation — optional [stub]
 
   Sequencing constraints:
   - Establish layered architecture and VLM repository before eval runner
+  - Add local Opik observability before heavy eval/prompt iteration (optional but recommended)
   - Build Oxford 102 eval before optimizing prompts/RAG
   - Classical ML backend plugs into same repository interface — compare fairly on same metrics
   - Try direct species lookup before vector DB
