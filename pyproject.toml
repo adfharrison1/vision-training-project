@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "==3.14.7"
 dependencies = [
     "ollama==0.6.2",
+    "opik==2.2.56",
     "pillow==12.3.0",
     "pydantic==2.13.5",
     "pydantic-settings==2.13.0",

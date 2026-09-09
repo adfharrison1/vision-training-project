@@ -52,6 +52,18 @@ class Settings(BaseSettings):
         default="closed-set-v1",
         description="Prompt template version recorded in artifacts.",
     )
+    opik_enabled: bool = Field(
+        default=False,
+        description="Export Ollama VLM traces to a local self-hosted Opik server.",
+    )
+    opik_base_url: str = Field(
+        default="http://127.0.0.1:5173/api",
+        description="Self-hosted Opik API base URL (local only — no Comet cloud).",
+    )
+    opik_project_name: str = Field(
+        default="plant-id",
+        description="Opik project name for identification traces.",
+    )
 
 
 @lru_cache

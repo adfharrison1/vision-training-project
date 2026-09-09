@@ -19,3 +19,18 @@ def test_settings_load_from_environment(monkeypatch) -> None:
     settings = Settings()
     assert settings.vision_model == "llava:7b"
     assert settings.uncertainty_threshold == 0.7
+
+
+def test_settings_opik_defaults_and_env(monkeypatch) -> None:
+    settings = Settings()
+    assert settings.opik_enabled is False
+    assert settings.opik_base_url == "http://127.0.0.1:5173/api"
+    assert settings.opik_project_name == "plant-id"
+
+    monkeypatch.setenv("PLANT_ID_OPIK_ENABLED", "true")
+    monkeypatch.setenv("PLANT_ID_OPIK_BASE_URL", "http://127.0.0.1:9999/api")
+    monkeypatch.setenv("PLANT_ID_OPIK_PROJECT_NAME", "test-project")
+    settings = Settings()
+    assert settings.opik_enabled is True
+    assert settings.opik_base_url == "http://127.0.0.1:9999/api"
+    assert settings.opik_project_name == "test-project"

@@ -13,6 +13,11 @@ from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation, ObservationResult, Prediction
 from plant_id.domain.repositories import SpeciesCatalogRepository
 from plant_id.infrastructure.config.settings import Settings
+from plant_id.infrastructure.observability.opik_tracing import (
+    call_ollama_chat_traced,
+    identify_trace,
+    record_identify_outcome,
+)
 
 PROMPT_TEMPLATE = """Identify the flowering plant in the photograph(s).
 
@@ -58,6 +63,19 @@ class VlmOllamaIdentificationRepository:
 
     def identify(self, observation: Observation) -> tuple[ObservationResult, dict]:
         photo_count = len(observation.photo_paths)
+        with identify_trace(
+            self._settings,
+            observation_id=observation.observation_id,
+            backend=self.backend_id,
+            photo_count=photo_count,
+        ):
+            return self._identify_with_tracing(observation, photo_count)
+
+    def _identify_with_tracing(
+        self,
+        observation: Observation,
+        photo_count: int,
+    ) -> tuple[ObservationResult, dict]:
         image_paths = [str(path.resolve()) for path in observation.photo_paths]
         for image_path in image_paths:
             if not Path(image_path).is_file():
@@ -88,7 +106,12 @@ class VlmOllamaIdentificationRepository:
         )
         try:
             with log_wait(3, 4, ollama_message):
-                response = self._client.chat(**request_payload)
+                response = call_ollama_chat_traced(
+                    self._settings,
+                    lambda: self._client.chat(**request_payload),
+                    model=self._settings.vision_model,
+                    prompt_version=self._settings.prompt_version,
+                )
         except Exception as exc:
             raise IdentificationError(
                 f"Ollama request failed for observation {observation.observation_id}: {exc}"
@@ -125,6 +148,18 @@ class VlmOllamaIdentificationRepository:
             raise IdentificationError(message, raw=raw) from exc
 
         log_stage(4, 4, "Parsed model response")
+        record_identify_outcome(
+            self._settings,
+            observation_id=observation.observation_id,
+            result_summary={
+                "top_species": result.predictions[0].species_label,
+                "top_confidence": result.predictions[0].confidence,
+                "prediction_count": len(result.predictions),
+                "uncertain": result.uncertain,
+                "prompt_version": result.prompt_version,
+                "model_tag": result.model_tag,
+            },
+        )
         return result, raw
 
     @staticmethod
