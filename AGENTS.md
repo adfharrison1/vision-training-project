@@ -1,0 +1,101 @@
+# Agent guide — UK Plant Identification
+
+Learning project: identify flowering plants from 1–3 photos using a **local Ollama VLM**. Runtime is local-only (no Pl@ntNet or cloud ID APIs). See `README.md` for human-oriented setup detail.
+
+## Quick verify (run after code changes)
+
+```bash
+uv sync
+uv run plant-id verify-env          # needs Ollama + qwen3-vl:8b
+uv run ruff check .
+uv run lint-imports
+uv run pytest                       # unit; skips integration without Ollama/sample
+```
+
+**Demo** (optional; needs `data/flowers/jpg/image_00001.jpg`):
+
+```bash
+uv run plant-id demo --backend vlm
+```
+
+**Identify a photo:**
+
+```bash
+uv run plant-id identify --backend vlm --photos /absolute/path/to/photo.jpg
+```
+
+Ground truth eval (not runtime): `uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --identify`
+
+## Layer rules (enforced by `.importlinter`)
+
+```text
+interfaces/cli       →  interfaces/composition only (+ stdlib)
+interfaces/composition  →  application, domain, infrastructure
+application          →  domain
+infrastructure       →  domain
+domain               →  nothing inward
+```
+
+| Layer | Path | Must not import |
+|---|---|---|
+| domain | `src/plant_id/domain/` | application, infrastructure, interfaces |
+| application | `src/plant_id/application/` | infrastructure, interfaces |
+| infrastructure | `src/plant_id/infrastructure/` | application, interfaces |
+| interfaces/cli | `src/plant_id/interfaces/cli/` | domain, infrastructure |
+| interfaces/composition | `src/plant_id/interfaces/composition/` | — (wiring shell; shared by CLI and future HTTP) |
+
+Run `uv run lint-imports` after changing imports.
+
+## Repository ports (domain)
+
+Defined in `src/plant_id/domain/repositories.py`:
+
+- **`IdentificationRepository`** — `identify(observation) -> (ObservationResult, raw dict)`; swappable backends (`vlm`, `classical` stub)
+- **`ArtifactRepository`** — persist run JSON under `artifacts/`
+- **`SpeciesCatalogRepository`** — closed-set label list for prompts
+
+**Use case** (`IdentifyPlantUseCase`) depends only on `IdentificationRepository` + `ArtifactRepository`. It does **not** receive the species catalog.
+
+## Composition and catalog injection
+
+Wiring lives in **`src/plant_id/interfaces/composition/`** — not in infrastructure or use cases.
+
+| Module | Role |
+|---|---|
+| `container.py` | `build_identify_use_case(backend, settings)` — builds `FileSpeciesCatalog`, injects into repo, wires use case |
+| `identify.py` | `execute_identify(...)` — builds `Observation`, runs use case, returns `IdentifyRunResult` |
+| `events.py` | `application_events_session(handler)` — binds `ApplicationEvents` |
+
+CLI commands call **`identify_with_cli_presentation`** in `interfaces/cli/presentation.py` (Rich progress). Future HTTP should call **`execute_identify`** directly (no Rich).
+
+**Adding a backend:** implement `IdentificationRepository` in `infrastructure/identification/`, register in `build_identify_use_case()`. Do not change the use case.
+
+## ApplicationEvents
+
+Domain port in `domain/application_events.py`. Infrastructure emits `log_stage` / `log_wait`; default is noop. CLI binds `RichApplicationEvents` via composition + presentation — infrastructure must not import Rich.
+
+## Eval boundary
+
+Code under **`eval/`** is benchmark-only. It may import runtime/composition for comparisons but must **not** be imported by `IdentifyPlantUseCase`, CLI, or infrastructure repos. External APIs (Pl@ntNet) belong in eval only.
+
+## Conventions for agents
+
+- **Python 3.14.7**, dependencies via **`uv`** (`uv run …`). Interpreter: `.venv/bin/python`.
+- Pin versions in `pyproject.toml` / `uv.lock`; bump deliberately.
+- Match existing layer placement; never fix import-linter violations by weakening `.importlinter`.
+- Species catalog: `resources/species_catalog/default.txt`; images for demo/eval: `data/flowers/` (gitignored).
+- OpenSpec change in progress: `openspec/changes/uk-plant-id-poc/`. Planning artifacts live there; do not copy OpenSpec into code comments.
+- Prefer minimal diffs; no DI framework — manual composition in `interfaces/composition/`.
+
+## Key paths
+
+```text
+src/plant_id/domain/              models, ports, ApplicationEvents
+src/plant_id/application/         IdentifyPlantUseCase
+src/plant_id/infrastructure/      VLM repo, artifacts, catalog, settings, Ollama env check
+src/plant_id/interfaces/composition/   wiring + execute_identify
+src/plant_id/interfaces/cli/        plant-id entrypoint
+eval/                               offline eval (check_ground_truth.py)
+tests/unit/                         fast tests with fakes
+tests/integration/                  live Ollama (@pytest.mark.integration)
+```
