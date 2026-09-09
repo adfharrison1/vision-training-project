@@ -34,7 +34,13 @@ infrastructure/vlm      ollama.chat + Opik @track / spans (when enabled)
 
 ## Opik self-hosted setup
 
-Run Opik via official Docker Compose (document exact compose file / version at implementation). Default local API base:
+Run Opik via the project wrapper (Docker required):
+
+```bash
+./scripts/opik.sh up
+```
+
+This uses `docker/opik/docker-compose.yml`, which includes Opik's upstream compose at a pinned tag. First run clones `comet-ml/opik` into `docker/opik/.upstream/` (gitignored). Default local API base:
 
 ```text
 http://127.0.0.1:5173/api
@@ -84,12 +90,12 @@ Both may be active simultaneously; they are independent sinks.
 
 ## Pinned versions
 
-Verify on implementation date:
+Verified 2026-09-09:
 
-| Component | Target |
+| Component | Version |
 |---|---|
-| opik (Python) | latest stable — pin exact in `pyproject.toml` |
-| Opik server (Docker) | pin image tag in docs / compose |
+| opik (Python) | 2.2.56 |
+| Opik server (Docker) | 2.2.56 via `docker/opik/.env` + `./scripts/opik.sh` |
 
 ## Open questions (resolve during implementation)
 
