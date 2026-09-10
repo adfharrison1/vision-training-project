@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     )
     vision_model: str = Field(
         default="qwen3-vl:2b",
-        description="Ollama vision model tag (default 2b for fast local iteration; override e.g. qwen3-vl:8b for comparison).",
+        description=(
+            "Ollama vision model tag (default 2b for fast local iteration; "
+            "override e.g. qwen3-vl:8b for comparison)."
+        ),
     )
     min_ollama_version: str = Field(
         default="0.33.3",

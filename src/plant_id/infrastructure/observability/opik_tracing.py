@@ -6,6 +6,8 @@ import logging
 import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any, TypeVar
 
 from plant_id.infrastructure.config.settings import Settings
@@ -15,6 +17,50 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 _opik_configured = False
+
+
+@dataclass
+class EvalTraceSession:
+    eval_run_id: str
+    eval_profile: str
+    ground_truth: str | None = None
+    trace_id: str | None = None
+
+
+_eval_session: ContextVar[EvalTraceSession | None] = ContextVar("eval_trace_session", default=None)
+
+
+@contextmanager
+def eval_trace_session(
+    eval_run_id: str,
+    eval_profile: str,
+    *,
+    ground_truth: str | None = None,
+) -> Iterator[EvalTraceSession]:
+    session = EvalTraceSession(
+        eval_run_id=eval_run_id,
+        eval_profile=eval_profile,
+        ground_truth=ground_truth,
+    )
+    token = _eval_session.set(session)
+    try:
+        yield session
+    finally:
+        _eval_session.reset(token)
+
+
+def current_eval_trace_session() -> EvalTraceSession | None:
+    return _eval_session.get()
+
+
+def _eval_trace_metadata(session: EvalTraceSession) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "eval_run_id": session.eval_run_id,
+        "eval_profile": session.eval_profile,
+    }
+    if session.ground_truth is not None:
+        metadata["ground_truth"] = session.ground_truth
+    return metadata
 
 
 def _configure_opik(settings: Settings) -> None:
@@ -117,19 +163,28 @@ def identify_trace(
         yield
         return
 
+    session = _eval_session.get()
+    metadata: dict[str, Any] = {
+        "observation_id": observation_id,
+        "backend": backend,
+        "photo_count": photo_count,
+    }
+    if session is not None:
+        metadata.update(_eval_trace_metadata(session))
+
     try:
         _configure_opik(settings)
-        from opik import start_as_current_span
+        from opik import opik_context, start_as_current_span
 
         with start_as_current_span(
             name="identify",
-            metadata={
-                "observation_id": observation_id,
-                "backend": backend,
-                "photo_count": photo_count,
-            },
+            metadata=metadata,
             project_name=settings.opik_project_name,
         ):
+            if session is not None:
+                trace_data = opik_context.get_current_trace_data()
+                if trace_data is not None:
+                    session.trace_id = trace_data.id
             yield
     except Exception as exc:
         logger.debug("Opik identify trace failed (non-fatal): %s", exc)
@@ -186,11 +241,21 @@ def record_identify_outcome(
     try:
         from opik import opik_context
 
-        opik_context.update_current_span(
-            metadata={
-                "observation_id": observation_id,
-                "prediction_summary": result_summary,
-            }
-        )
+        metadata: dict[str, Any] = {
+            "observation_id": observation_id,
+            "prediction_summary": result_summary,
+        }
+        session = _eval_session.get()
+        if session is not None:
+            metadata.update(_eval_trace_metadata(session))
+            top_species = result_summary.get("top_species")
+            species_labels = result_summary.get("species_labels")
+            if session.ground_truth and isinstance(top_species, str):
+                metadata["match"] = top_species == session.ground_truth
+                metadata["top1_match"] = top_species == session.ground_truth
+            if session.ground_truth and isinstance(species_labels, list):
+                metadata["top3_match"] = session.ground_truth in species_labels[:3]
+
+        opik_context.update_current_span(metadata=metadata)
     except Exception as exc:
         logger.debug("Opik identify outcome update failed (non-fatal): %s", exc)

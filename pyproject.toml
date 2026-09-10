@@ -5,6 +5,7 @@ description = "Local UK plant identification using Oxford 102 Flowers (learning 
 readme = "README.md"
 requires-python = "==3.14.7"
 dependencies = [
+    "httpx==0.28.1",
     "ollama==0.6.2",
     "opik==2.2.56",
     "pillow==12.3.0",
@@ -12,6 +13,7 @@ dependencies = [
     "pydantic-settings==2.13.0",
     "pyyaml==6.0.3",
     "rich==14.3.2",
+    "scipy==1.18.1",
 ]
 
 [project.scripts]
@@ -22,7 +24,6 @@ dev = [
     "import-linter==2.13",
     "pytest==9.1.1",
     "ruff==0.16.6",
-    "scipy==1.18.1",
 ]
 
 [build-system]

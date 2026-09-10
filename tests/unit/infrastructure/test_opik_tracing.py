@@ -11,7 +11,8 @@ from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
 
 
 @pytest.fixture
-def settings() -> Settings:
+def settings(monkeypatch) -> Settings:
+    monkeypatch.delenv("PLANT_ID_OPIK_ENABLED", raising=False)
     return Settings()
 
 

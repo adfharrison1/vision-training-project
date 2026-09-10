@@ -26,6 +26,15 @@ uv run plant-id identify --backend vlm --photos /absolute/path/to/photo.jpg
 
 Ground truth eval (not runtime): `uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --identify`
 
+**Oxford 102 eval profiles** (needs `data/flowers/` with `setid.mat`):
+
+```bash
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check   # 4 images (~14 min on 2b)
+uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline              # quick: 8 images (~30 min)
+```
+
+Improvement loop: run eval → read `artifacts/eval/*.json` failures → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
+
 ## Layer rules (enforced by `.importlinter`)
 
 ```text
@@ -110,7 +119,7 @@ src/plant_id/application/         IdentifyPlantUseCase
 src/plant_id/infrastructure/      VLM repo, artifacts, catalog, settings, Opik tracing, Ollama env check
 src/plant_id/interfaces/composition/   wiring + execute_identify
 src/plant_id/interfaces/cli/        plant-id entrypoint
-eval/                               offline eval (check_ground_truth.py)
+eval/                               offline eval (run_oxford102.py, check_ground_truth.py)
 tests/unit/                         fast tests with fakes
 tests/integration/                  live Ollama (@pytest.mark.integration)
 ```

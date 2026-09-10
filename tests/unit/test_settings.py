@@ -22,6 +22,9 @@ def test_settings_load_from_environment(monkeypatch) -> None:
 
 
 def test_settings_opik_defaults_and_env(monkeypatch) -> None:
+    monkeypatch.delenv("PLANT_ID_OPIK_ENABLED", raising=False)
+    monkeypatch.delenv("PLANT_ID_OPIK_BASE_URL", raising=False)
+    monkeypatch.delenv("PLANT_ID_OPIK_PROJECT_NAME", raising=False)
     settings = Settings()
     assert settings.opik_enabled is False
     assert settings.opik_base_url == "http://127.0.0.1:5173/api"

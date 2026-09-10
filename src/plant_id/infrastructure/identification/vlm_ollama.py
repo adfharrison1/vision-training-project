@@ -155,6 +155,7 @@ class VlmOllamaIdentificationRepository:
                 "top_species": result.predictions[0].species_label,
                 "top_confidence": result.predictions[0].confidence,
                 "prediction_count": len(result.predictions),
+                "species_labels": [prediction.species_label for prediction in result.predictions],
                 "uncertain": result.uncertain,
                 "prompt_version": result.prompt_version,
                 "model_tag": result.model_tag,

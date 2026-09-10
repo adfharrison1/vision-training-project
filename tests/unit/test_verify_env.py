@@ -22,7 +22,7 @@ def test_verify_environment_succeeds_when_model_present(
 ) -> None:
     mock_client = mock_client_cls.return_value
     mock_model = MagicMock()
-    mock_model.model = "qwen3-vl:8b"
+    mock_model.model = "qwen3-vl:2b"
     mock_client.list.return_value = MagicMock(models=[mock_model])
 
     settings = Settings()

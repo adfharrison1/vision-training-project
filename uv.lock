@@ -827,6 +827,7 @@ name = "plant-id"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "ollama" },
     { name = "opik" },
     { name = "pillow" },
@@ -834,6 +835,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "rich" },
+    { name = "scipy" },
 ]
 
 [package.dev-dependencies]
@@ -841,11 +843,11 @@ dev = [
     { name = "import-linter" },
     { name = "pytest" },
     { name = "ruff" },
-    { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = "==0.28.1" },
     { name = "ollama", specifier = "==0.6.2" },
     { name = "opik", specifier = "==2.2.56" },
     { name = "pillow", specifier = "==12.3.0" },
@@ -853,6 +855,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = "==2.13.0" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "rich", specifier = "==14.3.2" },
+    { name = "scipy", specifier = "==1.18.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -860,7 +863,6 @@ dev = [
     { name = "import-linter", specifier = "==2.13" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.16.6" },
-    { name = "scipy", specifier = "==1.18.1" },
 ]
 
 [[package]]

@@ -168,6 +168,41 @@ uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --iden
 
 The second form runs VLM identification and reports whether top-1 matches the `.mat` label.
 
+## Evaluation (Oxford 102)
+
+Offline benchmark runner under `eval/`. Default model is **`qwen3-vl:2b`**. The Oxford 102 **test split contains 6,149 images** — use named profiles instead of running the full split during day-to-day iteration.
+
+| Profile | Images | Target budget (2b) | Use |
+|---|---|---|---|
+| `smoke` | 4 | ~14 min | Pipeline sanity after code changes |
+| `quick` | 8 | ~30 min | **Default** — prompt/catalog iteration |
+| `full` | 6,149 | days | Long-running benchmark (explicit opt-in) |
+
+```bash
+# Default quick profile (~8 images)
+uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline
+
+# Fast sanity check
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check
+
+# Optional Pl@ntNet comparison (eval-only; needs PLANTNET_API_KEY)
+export PLANTNET_API_KEY=your-key
+uv run python -m eval.run_oxford102 --plantnet-baseline --eval-run-id prompt-v1
+```
+
+Reports are written to `artifacts/eval/` with top-1/top-3 accuracy, per-class breakdown, failures, and (when tracing is enabled) Opik `trace_id` values for diagnosis.
+
+**Improvement loop:** run eval → read JSON report failures → inspect traces in Opik UI or MCP → change one variable (prompt, catalog, threshold) → re-run the same profile with a new `--eval-run-id` suffix → compare reports.
+
+Enable Opik during eval runs:
+
+```bash
+export PLANT_ID_OPIK_ENABLED=true
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1
+```
+
+See `eval/README.md` for eval boundary rules and flag reference.
+
 Python interpreter: `.venv/bin/python` (created by `uv sync`).
 
 **Pinned versions:** Python 3.14.7, pydantic 2.13.5, ollama 0.6.2, opik 2.2.56, rich 14.3.2 — full list in `pyproject.toml` / `uv.lock`.

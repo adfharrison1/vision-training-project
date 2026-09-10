@@ -41,3 +41,15 @@ def test_ground_truth_rejects_out_of_range_index() -> None:
             ["a"] * 102,
             labels_mat,
         )
+
+
+def test_ground_truth_rejects_invalid_filename() -> None:
+    labels_mat = project_root() / "data" / "flowers" / "imagelabels.mat"
+    if not labels_mat.is_file():
+        pytest.skip("imagelabels.mat not present")
+    with pytest.raises(ValueError, match="image_XXXXX.jpg"):
+        ground_truth_species_label(
+            Path("passion.jpg"),
+            ["a"] * 102,
+            labels_mat,
+        )
