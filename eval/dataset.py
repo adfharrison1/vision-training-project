@@ -11,7 +11,14 @@ import scipy.io
 
 from eval.oxford102_ground_truth import (
     ground_truth_species_label,
+    parse_image_index,
     project_root,
+)
+from eval.profile_manifest import (
+    default_profile_manifest_path,
+    load_profile_manifest,
+    select_manifest_observations,
+    validate_manifest_against_dataset,
 )
 
 SPLIT_NAMES = ("train", "validation", "test")
@@ -130,24 +137,75 @@ def list_eval_images(
     profile: str = EvalProfile.QUICK,
     limit: int | None = None,
     dataset_root: Path | None = None,
+    profile_manifest: Path | None = None,
 ) -> list[EvalImage]:
-    """Return eval images for a split/profile in stable index order."""
+    """Return eval images for a split/profile."""
     split_name = resolve_split_name(split)
     profile_enum = resolve_profile(profile)
     root = dataset_root or default_dataset_root()
     jpg_dir, labels_mat, setid_mat = _require_dataset_files(root)
 
+    if profile_enum is EvalProfile.FULL:
+        return _list_split_indices(
+            class_names=class_names,
+            split_name=split_name,
+            indices=_full_split_indices(setid_mat, split_name, limit),
+            jpg_dir=jpg_dir,
+            labels_mat=labels_mat,
+        )
+
+    manifest_path = profile_manifest or default_profile_manifest_path(profile_enum.value)
+    manifest = load_profile_manifest(manifest_path)
+    observations = select_manifest_observations(manifest, profile_enum.value, limit=limit)
+
+    splits = load_oxford_splits(str(setid_mat.resolve()))
+    test_indices = set(split_image_indices(splits, split_name))
+    validate_manifest_against_dataset(
+        observations,
+        class_names=class_names,
+        jpg_dir=jpg_dir,
+        labels_mat=labels_mat,
+        split_name=split_name,
+        test_indices=test_indices,
+    )
+
+    images: list[EvalImage] = []
+    for row in observations:
+        image_path = jpg_dir / row.image_name
+        image_index = parse_image_index(image_path)
+        images.append(
+            EvalImage(
+                image_path=image_path,
+                image_index=image_index,
+                ground_truth=row.species,
+                split=split_name,
+            )
+        )
+    return images
+
+
+def _full_split_indices(
+    setid_mat: Path,
+    split_name: str,
+    limit: int | None,
+) -> tuple[int, ...]:
     splits = load_oxford_splits(str(setid_mat.resolve()))
     indices = sorted(split_image_indices(splits, split_name))
-
-    profile_limit = PROFILE_SIZES[profile_enum]
-    if profile_limit is not None:
-        indices = indices[:profile_limit]
     if limit is not None:
         if limit < 1:
             raise ValueError("--limit must be at least 1.")
         indices = indices[:limit]
+    return tuple(indices)
 
+
+def _list_split_indices(
+    *,
+    class_names: list[str],
+    split_name: str,
+    indices: tuple[int, ...],
+    jpg_dir: Path,
+    labels_mat: Path,
+) -> list[EvalImage]:
     images: list[EvalImage] = []
     for image_index in indices:
         image_path = jpg_dir / f"image_{image_index:05d}.jpg"

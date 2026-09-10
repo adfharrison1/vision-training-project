@@ -24,7 +24,10 @@ def test_list_eval_images_profile_sizes() -> None:
     if not (root / "setid.mat").is_file():
         pytest.skip("Oxford 102 dataset not present")
 
-    class_names = [f"class-{index}" for index in range(1, 103)]
+    from plant_id.infrastructure.config.settings import Settings
+    from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
+
+    class_names = FileSpeciesCatalog(Settings().species_catalog_path).list_class_names()
     smoke = list_eval_images(
         class_names=class_names,
         split="test",
@@ -39,7 +42,8 @@ def test_list_eval_images_profile_sizes() -> None:
     )
     assert len(smoke) == 4
     assert len(quick) == 8
-    assert smoke[0].image_index < smoke[1].image_index
+    assert len({image.ground_truth for image in quick}) == 8
+    assert smoke == quick[:4]
 
 
 def test_test_split_count_sanity() -> None:

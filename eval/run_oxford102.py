@@ -110,6 +110,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Oxford 102 dataset root (default: data/flowers)",
     )
     parser.add_argument(
+        "--profile-manifest",
+        type=Path,
+        default=None,
+        help=(
+            "YAML manifest of species/image pairs for smoke and quick "
+            "(default: eval/profiles/quick.yaml)"
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=None,
@@ -232,6 +241,7 @@ def run_eval(args: argparse.Namespace) -> int:
             profile=profile,
             limit=args.limit,
             dataset_root=args.dataset_root,
+            profile_manifest=args.profile_manifest,
         )
     except (FileNotFoundError, ValueError) as exc:
         print(str(exc), file=sys.stderr)

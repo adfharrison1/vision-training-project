@@ -19,9 +19,11 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 
 | Profile | Images | Notes |
 |---|---|---|
-| `smoke` | 4 | First 4 test-split images (stable order) |
-| `quick` | 8 | **Default** — ~30-minute improvement rounds on 2b |
+| `smoke` | 4 | First 4 rows from `eval/profiles/quick.yaml` |
+| `quick` | 8 | All 8 rows from `eval/profiles/quick.yaml` — one fixed image per species |
 | `full` | 6,149 | All test-split images |
+
+**Profile manifest:** edit `eval/profiles/quick.yaml` to change `species` and `image` independently per row. Ground truth is validated against `imagelabels.mat` on load. Override with `--profile-manifest /path/to.yaml`.
 
 ### CLI flags
 
@@ -35,6 +37,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `--max-duration` | none | Stop when exceeded (e.g. `30m`) |
 | `--quiet` / `--no-quiet` | quiet on | Suppress stderr progress |
 | `--dataset-root` | `data/flowers` | Oxford 102 root |
+| `--profile-manifest` | auto | YAML species/image pairs for smoke and quick |
 | `--output` | auto | Report path under `artifacts/eval/` |
 | `--plantnet-baseline` | off | Optional Pl@ntNet comparison |
 

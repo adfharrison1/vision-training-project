@@ -1,0 +1,24 @@
+# Fixed observations for smoke (first 4) and quick (all 8) eval profiles.
+#
+# Edit `species` and `image` independently per row. After changing one field,
+# keep the pair consistent: the image's Oxford ground truth must match species.
+#
+# smoke uses the first four rows; quick uses all eight.
+
+observations:
+  - species: pink primrose
+    image: image_06734.jpg
+  - species: hard-leaved pocket orchid
+    image: image_05087.jpg
+  - species: canterbury bells
+    image: image_06613.jpg
+  - species: sweet pea
+    image: image_05629.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: tiger lily
+    image: image_07162.jpg
+  - species: moon orchid
+    image: image_07200.jpg
+  - species: bird of paradise
+    image: image_03284.jpg

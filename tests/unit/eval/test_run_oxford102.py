@@ -31,6 +31,7 @@ def _sample_args(**overrides) -> Namespace:
         "dataset_root": None,
         "output": None,
         "plantnet_baseline": False,
+        "profile_manifest": None,
     }
     defaults.update(overrides)
     return Namespace(**defaults)
