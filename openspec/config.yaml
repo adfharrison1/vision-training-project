@@ -58,8 +58,8 @@ context: |
 
   Planned change sequence (indicative — revise at planning time):
   1. uk-plant-id-poc           — layered app + VLM repository [complete]
-  2. local-opik-observability  — self-hosted Opik tracing for Ollama calls [planned]
-  3. eval-dataset-baseline     — Oxford 102 eval + optional Pl@ntNet comparison [stub]
+  2. local-opik-observability  — self-hosted Opik tracing for Ollama calls [complete]
+  3. eval-dataset-baseline     — Oxford 102 eval + optional Pl@ntNet comparison [next]
   4. classical-ml-backend      — train/serve sklearn/torch repo on Oxford 102 [stub]
   5. direct-species-rag        — species sheets via direct lookup (VLM path) [stub]
   6. vector-retrieval          — semantic retrieval [stub]

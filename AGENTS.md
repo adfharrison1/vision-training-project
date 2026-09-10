@@ -99,7 +99,7 @@ Code under **`eval/`** is benchmark-only. It may import runtime/composition for 
 - Pin versions in `pyproject.toml` / `uv.lock`; bump deliberately.
 - Match existing layer placement; never fix import-linter violations by weakening `.importlinter`.
 - Species catalog: `resources/species_catalog/default.txt`; images for demo/eval: `data/flowers/` (gitignored).
-- OpenSpec change in progress: `openspec/changes/local-opik-observability/`. Planning artifacts live there; do not copy OpenSpec into code comments.
+- OpenSpec main specs: `openspec/specs/`. Completed changes archived under `openspec/changes/archive/`. Next planned change: `eval-dataset-baseline` (stub in `openspec/changes/eval-dataset-baseline/`). Do not copy OpenSpec into code comments.
 - Prefer minimal diffs; no DI framework — manual composition in `interfaces/composition/`.
 
 ## Key paths
