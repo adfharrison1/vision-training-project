@@ -13,7 +13,7 @@ Inference runs on your machine via Ollama. No cloud or third-party identificatio
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install Ollama from ollama.com, start it, then:
-ollama pull qwen3-vl:8b
+ollama pull qwen3-vl:2b
 
 # Project setup
 uv sync
@@ -50,7 +50,7 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | Variable | Default | Description |
 |---|---|---|
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama base URL |
-| `VISION_MODEL` | `qwen3-vl:8b` | Ollama vision model tag |
+| `VISION_MODEL` | `qwen3-vl:2b` | Ollama vision model tag (use `qwen3-vl:8b` for accuracy comparison) |
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |
 | `ARTIFACTS_DIR` | `artifacts/` | Where run JSON files are written |
@@ -83,7 +83,7 @@ On first run, `./scripts/opik.sh` clones the pinned Opik release into `docker/op
 | **Colima VM RAM** | Opik needs **≥ 8 GiB** allocated to Colima (`colima start --memory 8`). The default **2 GiB** VM tends to hang on backend migrations. |
 | **Colima VM disk** | Docker images and volumes live under `~/.colima/` — often **10–15 GiB+** once Opik is pulled (macOS may show this as a Lima/`limactl` VM). |
 | **CPU** | First Opik start runs MySQL + ClickHouse + Java backend migrations; allow **5–15 minutes** on first boot. `./scripts/opik.sh status` until `backend` and `frontend` are healthy. |
-| **Ollama (separate)** | The VLM (`qwen3-vl:8b`) uses additional RAM/CPU outside Docker — keep Opik off when you only need `plant-id identify`. |
+| **Ollama (separate)** | The VLM (`qwen3-vl:2b` by default) uses additional RAM/CPU outside Docker — keep Opik off when you only need `plant-id identify`. |
 
 Stop when not tracing to free memory:
 

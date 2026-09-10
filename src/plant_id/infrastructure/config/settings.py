@@ -24,8 +24,8 @@ class Settings(BaseSettings):
         description="Base URL for the local Ollama server.",
     )
     vision_model: str = Field(
-        default="qwen3-vl:8b",
-        description="Ollama vision model tag (locked after task 1.6 Intel macOS spike).",
+        default="qwen3-vl:2b",
+        description="Ollama vision model tag (default 2b for fast local iteration; override e.g. qwen3-vl:8b for comparison).",
     )
     min_ollama_version: str = Field(
         default="0.33.3",

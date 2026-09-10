@@ -41,7 +41,7 @@ context: |
   - uv 0.12.10, ruff 0.16.6, pytest 9.1.1
   - Pydantic 2.13.5, PyYAML 6.0.3, Pillow 12.3.0
   - ollama Python client 0.6.2 against Ollama server 0.33.3+
-  - Default vision model: qwen3-vl:8b (confirmed Intel macOS spike, task 1.6 — use ollama images array, absolute paths)
+  - Default vision model: qwen3-vl:2b (fast local iteration on Intel macOS; qwen3-vl:8b available for accuracy comparison — use ollama images array, absolute paths)
   - Node 24.13.1 for OpenSpec CLI tooling only (see `.nvmrc`)
   - Pin exact library versions in `pyproject.toml` / `uv.lock`; bump deliberately, not ad hoc
 

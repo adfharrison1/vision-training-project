@@ -6,7 +6,7 @@ Learning project: identify flowering plants from 1–3 photos using a **local Ol
 
 ```bash
 uv sync
-uv run plant-id verify-env          # needs Ollama + qwen3-vl:8b
+uv run plant-id verify-env          # needs Ollama + qwen3-vl:2b (default)
 uv run ruff check .
 uv run lint-imports
 uv run pytest                       # unit; skips integration without Ollama/sample

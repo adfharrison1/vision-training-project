@@ -8,7 +8,7 @@ def test_settings_defaults_use_project_paths() -> None:
     root = Path(__file__).resolve().parents[2]
     assert settings.species_catalog_path == root / "resources" / "species_catalog" / "default.txt"
     assert settings.artifacts_dir == root / "artifacts"
-    assert settings.vision_model == "qwen3-vl:8b"
+    assert settings.vision_model == "qwen3-vl:2b"
     assert settings.uncertainty_threshold == 0.5
     assert settings.prompt_version == "closed-set-v1"
 
