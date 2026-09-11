@@ -203,6 +203,10 @@ uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1
 
 See `eval/README.md` for eval boundary rules and flag reference.
 
+## Agent shortcuts
+
+Repeatable agent slash commands (eval runs, verify, identify, Opik) are defined in **`agent/commands/`** — one canonical source for any coding agent. Register them in your host per `agent/commands/README.md`. Full index: **`AGENTS.md`** (Agent commands section). OpenSpec planning uses separate `/opsx-*` commands.
+
 Python interpreter: `.venv/bin/python` (created by `uv sync`).
 
 **Pinned versions:** Python 3.14.7, pydantic 2.13.5, ollama 0.6.2, opik 2.2.56, rich 14.3.2 — full list in `pyproject.toml` / `uv.lock`.

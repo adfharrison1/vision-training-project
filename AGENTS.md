@@ -35,6 +35,19 @@ uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline            
 
 Improvement loop: run eval → read `artifacts/eval/*.json` failures → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
 
+## Agent commands
+
+Canonical slash-command prompts live in **`agent/commands/`** (agent-agnostic). Register them in your agent host — see `agent/commands/README.md`. OpenSpec workflow commands (`/opsx-*`) are separate under `.cursor/commands/`.
+
+| Command | Purpose |
+|---|---|
+| `/eval-run` | Start Oxford 102 eval (default profile `quick`; background run) |
+| `/eval-triage` | Summarize latest eval report failures and next steps |
+| `/verify` | Post-change loop: sync, verify-env, ruff, lint-imports, pytest |
+| `/opik-up` | Start/check local Opik via `./scripts/opik.sh` |
+| `/identify` | Ad-hoc VLM identify on absolute photo path(s) |
+| `/demo` | Bundled sample identify demo |
+
 ## Layer rules (enforced by `.importlinter`)
 
 ```text
