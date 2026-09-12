@@ -175,19 +175,20 @@ def identify_trace(
     try:
         _configure_opik(settings)
         from opik import opik_context, start_as_current_span
-
-        with start_as_current_span(
-            name="identify",
-            metadata=metadata,
-            project_name=settings.opik_project_name,
-        ):
-            if session is not None:
-                trace_data = opik_context.get_current_trace_data()
-                if trace_data is not None:
-                    session.trace_id = trace_data.id
-            yield
     except Exception as exc:
-        logger.debug("Opik identify trace failed (non-fatal): %s", exc)
+        logger.debug("Opik identify trace setup failed (non-fatal): %s", exc)
+        yield
+        return
+
+    with start_as_current_span(
+        name="identify",
+        metadata=metadata,
+        project_name=settings.opik_project_name,
+    ):
+        if session is not None:
+            trace_data = opik_context.get_current_trace_data()
+            if trace_data is not None:
+                session.trace_id = trace_data.id
         yield
 
 
@@ -204,29 +205,29 @@ def call_ollama_chat_traced[T](
     try:
         _configure_opik(settings)
         from opik import opik_context, start_as_current_span
-
-        with start_as_current_span(
-            name="ollama.chat",
-            type="llm",
-            model=model,
-            provider="ollama",
-            metadata={"prompt_version": prompt_version},
-            project_name=settings.opik_project_name,
-            tags=["ollama", "plant-id"],
-        ):
-            response = chat_fn()
-            opik_context.update_current_span(
-                metadata=_ollama_span_metadata(
-                    response,
-                    model=model,
-                    prompt_version=prompt_version,
-                ),
-                usage=_ollama_span_usage(response),
-            )
-            return response
     except Exception as exc:
-        logger.debug("Opik ollama.chat trace failed (non-fatal): %s", exc)
+        logger.debug("Opik ollama.chat trace setup failed (non-fatal): %s", exc)
         return chat_fn()
+
+    with start_as_current_span(
+        name="ollama.chat",
+        type="llm",
+        model=model,
+        provider="ollama",
+        metadata={"prompt_version": prompt_version},
+        project_name=settings.opik_project_name,
+        tags=["ollama", "plant-id"],
+    ):
+        response = chat_fn()
+        opik_context.update_current_span(
+            metadata=_ollama_span_metadata(
+                response,
+                model=model,
+                prompt_version=prompt_version,
+            ),
+            usage=_ollama_span_usage(response),
+        )
+        return response
 
 
 def record_identify_outcome(

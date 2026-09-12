@@ -38,6 +38,12 @@ Rules:
 - species_label MUST match one allowed class name exactly.
 - confidence is a number from 0.0 to 1.0 for each prediction.
 - Do not include markdown or commentary outside the JSON.
+- Some allowed names overlap in wording but denote different classes (for example
+  "english marigold" and "marigold" are not interchangeable). Read the full list;
+  choose the single best exact match — do not use a shorter or generic name when a
+  more specific allowed name fits the plant shown.
+- When more than one allowed name seems plausible, return 3 predictions with
+  distinct species_label values so the next-best alternatives appear in ranks 2 and 3.
 
 Allowed class names:
 {class_names}
@@ -55,7 +61,10 @@ class VlmOllamaIdentificationRepository:
     ) -> None:
         self._settings = settings
         self._species_catalog = species_catalog
-        self._client = client or Client(host=settings.ollama_host)
+        self._client = client or Client(
+            host=settings.ollama_host,
+            timeout=settings.ollama_timeout_seconds,
+        )
 
     @property
     def backend_id(self) -> str:

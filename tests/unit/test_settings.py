@@ -10,7 +10,8 @@ def test_settings_defaults_use_project_paths() -> None:
     assert settings.artifacts_dir == root / "artifacts"
     assert settings.vision_model == "qwen3-vl:2b"
     assert settings.uncertainty_threshold == 0.5
-    assert settings.prompt_version == "closed-set-v1"
+    assert settings.prompt_version == "closed-set-v2"
+    assert settings.ollama_timeout_seconds == 600.0
 
 
 def test_settings_load_from_environment(monkeypatch) -> None:

@@ -22,6 +22,27 @@ def catalog(settings: Settings) -> FileSpeciesCatalog:
     return FileSpeciesCatalog(settings.species_catalog_path)
 
 
+def test_vlm_client_uses_configured_ollama_timeout(
+    settings: Settings,
+    catalog: FileSpeciesCatalog,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, host: str | None = None, **kwargs: object) -> None:
+            captured["host"] = host
+            captured["timeout"] = kwargs.get("timeout")
+
+    monkeypatch.setattr(
+        "plant_id.infrastructure.identification.vlm_ollama.Client",
+        FakeClient,
+    )
+    VlmOllamaIdentificationRepository(settings, catalog)
+    assert captured["host"] == settings.ollama_host
+    assert captured["timeout"] == settings.ollama_timeout_seconds
+
+
 def test_vlm_parse_result_marks_uncertain_when_confidence_low(
     settings: Settings,
     catalog: FileSpeciesCatalog,

@@ -23,6 +23,14 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:11434",
         description="Base URL for the local Ollama server.",
     )
+    ollama_timeout_seconds: float = Field(
+        default=600.0,
+        gt=0,
+        description=(
+            "Maximum seconds to wait for a single Ollama chat request "
+            "(vision calls on 2b typically finish within a few minutes)."
+        ),
+    )
     vision_model: str = Field(
         default="qwen3-vl:2b",
         description=(
@@ -52,7 +60,7 @@ class Settings(BaseSettings):
         description="Directory for persisted identification run JSON artifacts.",
     )
     prompt_version: str = Field(
-        default="closed-set-v1",
+        default="closed-set-v2",
         description="Prompt template version recorded in artifacts.",
     )
     opik_enabled: bool = Field(
