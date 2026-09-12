@@ -103,6 +103,7 @@ class VlmOllamaIdentificationRepository:
                 }
             ],
             "format": "json",
+            "think": False,
             "options": {"temperature": 0},
         }
 
@@ -129,6 +130,7 @@ class VlmOllamaIdentificationRepository:
                 "prompt_version": self._settings.prompt_version,
                 "photo_paths": image_paths,
                 "temperature": 0,
+                "think": False,
             },
             "response": response.model_dump(mode="json")
             if hasattr(response, "model_dump")

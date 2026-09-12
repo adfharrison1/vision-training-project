@@ -128,7 +128,7 @@ def test_vlm_identify_sends_all_photos_to_ollama(
     assert result.uncertain is False
     chat_kwargs = client.chat.call_args.kwargs
     assert chat_kwargs["options"] == {"temperature": 0}
-    assert "think" not in chat_kwargs
+    assert chat_kwargs["think"] is False
     images = chat_kwargs["messages"][0]["images"]
     assert len(images) == 2
     assert raw["request"]["photo_paths"] == images
