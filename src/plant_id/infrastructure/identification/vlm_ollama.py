@@ -21,7 +21,8 @@ from plant_id.infrastructure.observability.opik_tracing import (
 
 PROMPT_TEMPLATE = """Identify the flowering plant in the photograph(s).
 
-Return ONLY valid JSON matching this schema:
+Return ONLY valid JSON: root object MUST be {{"predictions": [{{...}}, ...]}} — never a bare prediction object at the root.
+Example shape:
 {{
   "predictions": [
     {{
@@ -35,15 +36,11 @@ Return ONLY valid JSON matching this schema:
 
 Rules:
 - Provide 1 to 3 predictions ranked by confidence.
-- species_label MUST match one allowed class name exactly.
+- species_label MUST match one allowed class name exactly (case and spelling).
+- Prefer the most specific allowed name when several overlap in meaning.
+- If two or more allowed names fit, list up to 3 distinct species_label values.
 - confidence is a number from 0.0 to 1.0 for each prediction.
-- Do not include markdown or commentary outside the JSON.
-- Some allowed names overlap in wording but denote different classes (for example
-  "english marigold" and "marigold" are not interchangeable). Read the full list;
-  choose the single best exact match — do not use a shorter or generic name when a
-  more specific allowed name fits the plant shown.
-- When more than one allowed name seems plausible, return 3 predictions with
-  distinct species_label values so the next-best alternatives appear in ranks 2 and 3.
+- Put only the JSON object in your reply — no markdown, commentary, or long reasoning.
 
 Allowed class names:
 {class_names}

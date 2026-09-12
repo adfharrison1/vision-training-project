@@ -91,7 +91,7 @@ def test_call_ollama_chat_traced_does_not_retry_on_chat_failure() -> None:
                     settings,
                     chat_fn,
                     model="qwen3-vl:2b",
-                    prompt_version="closed-set-v2",
+                    prompt_version="closed-set-v3",
                 )
 
     assert chat_fn.call_count == 1

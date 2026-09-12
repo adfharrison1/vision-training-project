@@ -60,7 +60,7 @@ class Settings(BaseSettings):
         description="Directory for persisted identification run JSON artifacts.",
     )
     prompt_version: str = Field(
-        default="closed-set-v2",
+        default="closed-set-v3",
         description="Prompt template version recorded in artifacts.",
     )
     opik_enabled: bool = Field(
