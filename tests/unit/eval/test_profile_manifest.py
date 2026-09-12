@@ -36,6 +36,16 @@ def test_select_manifest_observations_honors_profile_size() -> None:
     assert len({row.species for row in quick}) == 8
 
 
+def test_mixed16_manifest_has_sixteen_distinct_species() -> None:
+    manifest = load_profile_manifest(Path("eval/profiles/mixed16.yaml"))
+    mixed16 = select_manifest_observations(manifest, "mixed16")
+
+    assert len(mixed16) == 16
+    assert len({row.species for row in mixed16}) == 16
+    assert mixed16[0].image_name == "image_06734.jpg"
+    assert mixed16[1].image_name == "image_05147.jpg"
+
+
 def test_validate_manifest_rejects_species_image_mismatch() -> None:
     from eval.dataset import default_dataset_root, load_oxford_splits, split_image_indices
     from eval.profile_manifest import ProfileObservationSpec, validate_manifest_against_dataset

@@ -1,0 +1,36 @@
+# Mixed16: 2 regression rows from quick.yaml + 14 species not in quick.yaml.
+# Run: uv run python -m eval.run_oxford102 --profile mixed16 --eval-run-id ...
+
+observations:
+  - species: pink primrose
+    image: image_06734.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: marigold
+    image: image_04953.jpg
+  - species: primula
+    image: image_03641.jpg
+  - species: wild pansy
+    image: image_04159.jpg
+  - species: sunflower
+    image: image_05399.jpg
+  - species: bearded iris
+    image: image_05903.jpg
+  - species: daffodil
+    image: image_05686.jpg
+  - species: rose
+    image: image_01143.jpg
+  - species: water lily
+    image: image_00252.jpg
+  - species: passion flower
+    image: image_00001.jpg
+  - species: geranium
+    image: image_02639.jpg
+  - species: foxglove
+    image: image_07304.jpg
+  - species: carnation
+    image: image_06890.jpg
+  - species: purple coneflower
+    image: image_03828.jpg
+  - species: black-eyed susan
+    image: image_05849.jpg

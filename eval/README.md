@@ -21,6 +21,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 |---|---|---|
 | `smoke` | 4 | First 4 rows from `eval/profiles/quick.yaml` |
 | `quick` | 8 | All 8 rows from `eval/profiles/quick.yaml` — one fixed image per species |
+| `mixed16` | 16 | All rows from `eval/profiles/mixed16.yaml` — 2 regression images + 14 fresh species |
 | `full` | 6,149 | All test-split images |
 
 **Profile manifest:** edit `eval/profiles/quick.yaml` to change `species` and `image` independently per row. Ground truth is validated against `imagelabels.mat` on load. Override with `--profile-manifest /path/to.yaml`.
@@ -29,7 +30,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `--profile` | `quick` | `smoke`, `quick`, or `full` |
+| `--profile` | `quick` | `smoke`, `quick`, `mixed16`, or `full` |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
 | `--backend` | `vlm` | Composition backend (`vlm`, `classical`) |
 | `--split` | `test` | Oxford split (`train`, `validation`, `test`) |

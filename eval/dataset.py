@@ -28,12 +28,14 @@ EXPECTED_TEST_SPLIT_SIZE = 6149
 class EvalProfile(StrEnum):
     SMOKE = "smoke"
     QUICK = "quick"
+    MIXED16 = "mixed16"
     FULL = "full"
 
 
 PROFILE_SIZES: dict[EvalProfile, int | None] = {
     EvalProfile.SMOKE: 4,
     EvalProfile.QUICK: 8,
+    EvalProfile.MIXED16: 16,
     EvalProfile.FULL: None,
 }
 

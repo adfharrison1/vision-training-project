@@ -13,7 +13,13 @@ from eval.oxford102_ground_truth import (
     project_root,
 )
 
-PROFILE_OBSERVATION_COUNTS = {"smoke": 4, "quick": 8}
+PROFILE_OBSERVATION_COUNTS = {"smoke": 4, "quick": 8, "mixed16": 16}
+
+PROFILE_MANIFEST_FILES = {
+    "smoke": "quick.yaml",
+    "quick": "quick.yaml",
+    "mixed16": "mixed16.yaml",
+}
 
 
 @dataclass(frozen=True)
@@ -28,9 +34,10 @@ class ProfileManifest:
 
 
 def default_profile_manifest_path(profile: str) -> Path:
-    if profile in PROFILE_OBSERVATION_COUNTS:
-        return project_root() / "eval" / "profiles" / "quick.yaml"
-    raise ValueError(f"Profile {profile!r} does not use a fixed manifest.")
+    manifest_file = PROFILE_MANIFEST_FILES.get(profile)
+    if manifest_file is None:
+        raise ValueError(f"Profile {profile!r} does not use a fixed manifest.")
+    return project_root() / "eval" / "profiles" / manifest_file
 
 
 def load_profile_manifest(path: Path) -> ProfileManifest:
