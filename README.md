@@ -41,6 +41,7 @@ Add `--quiet` to hide progress on stderr. Results go to stdout; artifacts to `ar
 | `plant-id verify-env` | Check Ollama is up and the vision model is installed |
 | `plant-id demo --backend vlm` | Identify the bundled sample image |
 | `plant-id identify --backend vlm --photos a.jpg` | Identify 1–3 comma-separated photo paths |
+| `plant-id identify --backend vlm --photos a.jpg --think` | Same, with Ollama thinking mode enabled for this run |
 | `plant-id identify --backend classical …` | Stub — not implemented yet |
 
 ## Configuration
@@ -50,6 +51,7 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | Variable | Default | Description |
 |---|---|---|
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama base URL |
+| `OLLAMA_THINK` | `false` | Enable qwen3 thinking mode on identify (use `--think` per run to override) |
 | `VISION_MODEL` | `qwen3-vl:2b` | Ollama vision model tag (use `qwen3-vl:8b` for accuracy comparison) |
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |

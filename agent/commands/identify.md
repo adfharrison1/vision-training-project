@@ -18,6 +18,7 @@ Run ad-hoc plant identification on one or more photos.
    ```bash
    uv run plant-id identify --backend vlm --photos <absolute-path>[,<path2>,...]
    ```
+   Optional: `--think` / `--no-think` for this run (default `false`; env `PLANT_ID_OLLAMA_THINK`).
 
 3. **Summarize results**
    - Top species predictions from stdout JSON or the saved artifact under `artifacts/`

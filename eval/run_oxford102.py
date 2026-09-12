@@ -26,7 +26,7 @@ from eval.report import (
 )
 from plant_id.infrastructure.observability.opik_tracing import eval_trace_session
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
-from plant_id.interfaces.composition import execute_identify, load_settings
+from plant_id.interfaces.composition import execute_identify, load_settings, resolve_settings
 from plant_id.interfaces.composition.container import Backend
 
 _DURATION_PATTERN = re.compile(
@@ -129,6 +129,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Include optional Pl@ntNet baseline metrics",
     )
+    parser.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Enable Ollama thinking mode for this eval run "
+            "(default: false, or PLANT_ID_OLLAMA_THINK)."
+        ),
+    )
     return parser
 
 
@@ -226,7 +235,7 @@ def _run_plantnet_observation(
 
 
 def run_eval(args: argparse.Namespace) -> int:
-    settings = load_settings()
+    settings = resolve_settings(load_settings(), ollama_think=args.think)
     eval_run_id = args.eval_run_id or default_eval_run_id()
     profile = resolve_profile(args.profile).value
     backend: Backend = args.backend

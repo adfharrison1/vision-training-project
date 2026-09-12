@@ -20,6 +20,18 @@ def load_settings() -> Settings:
     return Settings()
 
 
+def resolve_settings(
+    settings: Settings | None = None,
+    *,
+    ollama_think: bool | None = None,
+) -> Settings:
+    """Merge optional per-run overrides onto loaded settings."""
+    resolved = settings or load_settings()
+    if ollama_think is None:
+        return resolved
+    return resolved.model_copy(update={"ollama_think": ollama_think})
+
+
 def build_identify_use_case(
     backend: Backend,
     settings: Settings | None = None,
@@ -46,5 +58,6 @@ __all__ = [
     "VerifyEnvResult",
     "build_identify_use_case",
     "load_settings",
+    "resolve_settings",
     "verify_environment",
 ]

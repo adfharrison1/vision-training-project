@@ -16,6 +16,7 @@ Run the project demo identify path on the bundled sample image.
    ```bash
    uv run plant-id demo --backend vlm
    ```
+   Optional: `--think` / `--no-think` for this run (default `false`; env `PLANT_ID_OLLAMA_THINK`).
 
 3. **Summarize results**
    - Top predictions from stdout or saved artifact

@@ -32,6 +32,7 @@ Start an Oxford 102 benchmark eval for the plant-id improvement loop.
      ```bash
      uv run python -m eval.run_oxford102 --profile <profile> --eval-run-id <id>
      ```
+   - Optional: `--think` / `--no-think` for this run (default `false`; env `PLANT_ID_OLLAMA_THINK`).
    - Run as a **background/long-running process** (~14 min for `smoke`, ~30 min for `quick` on qwen3-vl:2b). Poll periodically for progress and completion rather than blocking silently.
    - On success, report the JSON report path under `artifacts/eval/` and summary metrics (top-1, top-3, failure count).
 

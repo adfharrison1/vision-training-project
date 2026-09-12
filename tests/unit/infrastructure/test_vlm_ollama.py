@@ -132,6 +132,39 @@ def test_vlm_identify_sends_all_photos_to_ollama(
     images = chat_kwargs["messages"][0]["images"]
     assert len(images) == 2
     assert raw["request"]["photo_paths"] == images
+    assert raw["request"]["think"] is False
+
+
+def test_vlm_identify_honors_ollama_think_setting(
+    catalog: FileSpeciesCatalog,
+    tmp_path: Path,
+) -> None:
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake")
+    client = MagicMock()
+    response = MagicMock()
+    response.message.content = json.dumps(
+        {
+            "predictions": [
+                {
+                    "rank": 1,
+                    "species_label": "pink primrose",
+                    "evidence": "pink petals",
+                    "confidence": 0.95,
+                }
+            ]
+        }
+    )
+    response.model_dump.return_value = {"message": {"content": response.message.content}}
+    client.chat.return_value = response
+
+    settings = Settings(ollama_think=True)
+    repo = VlmOllamaIdentificationRepository(settings, catalog, client=client)
+    observation = Observation(observation_id="obs-think", photo_paths=[photo])
+
+    repo.identify(observation)
+
+    assert client.chat.call_args.kwargs["think"] is True
 
 
 def test_classical_ml_stub_raises_clear_error(

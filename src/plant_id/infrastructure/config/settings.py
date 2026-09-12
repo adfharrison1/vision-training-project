@@ -31,6 +31,13 @@ class Settings(BaseSettings):
             "(vision calls on 2b typically finish within a few minutes)."
         ),
     )
+    ollama_think: bool = Field(
+        default=False,
+        description=(
+            "When true, allow qwen3 thinking mode on Ollama chat requests. "
+            "Default false avoids token-budget death spirals on closed-set identify."
+        ),
+    )
     vision_model: str = Field(
         default="qwen3-vl:2b",
         description=(

@@ -12,6 +12,7 @@ def test_settings_defaults_use_project_paths() -> None:
     assert settings.uncertainty_threshold == 0.5
     assert settings.prompt_version == "closed-set-v3"
     assert settings.ollama_timeout_seconds == 600.0
+    assert settings.ollama_think is False
 
 
 def test_settings_load_from_environment(monkeypatch) -> None:
@@ -38,3 +39,11 @@ def test_settings_opik_defaults_and_env(monkeypatch) -> None:
     assert settings.opik_enabled is True
     assert settings.opik_base_url == "http://127.0.0.1:9999/api"
     assert settings.opik_project_name == "test-project"
+
+
+def test_settings_ollama_think_from_environment(monkeypatch) -> None:
+    monkeypatch.delenv("PLANT_ID_OLLAMA_THINK", raising=False)
+    assert Settings().ollama_think is False
+
+    monkeypatch.setenv("PLANT_ID_OLLAMA_THINK", "true")
+    assert Settings().ollama_think is True

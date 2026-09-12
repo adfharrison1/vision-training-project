@@ -6,6 +6,7 @@ import pytest
 from eval.run_oxford102 import parse_duration_budget, run_eval
 
 from plant_id.domain.models import ObservationResult, Prediction
+from plant_id.infrastructure.config.settings import Settings
 
 
 def _mock_settings() -> object:
@@ -32,6 +33,7 @@ def _sample_args(**overrides) -> Namespace:
         "output": None,
         "plantnet_baseline": False,
         "profile_manifest": None,
+        "think": None,
     }
     defaults.update(overrides)
     return Namespace(**defaults)
@@ -157,3 +159,55 @@ def test_run_eval_local_metrics_survive_plantnet_failure(tmp_path: Path) -> None
     payload = output_path.read_text(encoding="utf-8")
     assert '"top1_accuracy": 1.0' in payload
     assert '"plantnet"' in payload
+
+
+def test_run_eval_applies_ollama_think_flag(tmp_path: Path) -> None:
+    output_path = tmp_path / "report-think.json"
+    fake_result = ObservationResult(
+        observation_id="eval-unit-test-image_00001",
+        predictions=(
+            Prediction(
+                rank=1,
+                species_label="tiger lily",
+                evidence="test",
+                confidence=0.9,
+            ),
+        ),
+        model_tag="qwen3-vl:2b",
+        prompt_version="closed-set-v1",
+    )
+    captured: dict[str, bool] = {}
+
+    def capture_identify(_backend, _paths, _observation_id, settings) -> object:
+        captured["ollama_think"] = settings.ollama_think
+        return type(
+            "Outcome",
+            (),
+            {"exit_code": 0, "error_message": None, "result": fake_result},
+        )()
+
+    with (
+        patch(
+            "eval.run_oxford102.list_eval_images",
+            return_value=[
+                type(
+                    "EvalImage",
+                    (),
+                    {
+                        "image_path": Path("data/flowers/jpg/image_00001.jpg"),
+                        "ground_truth": "tiger lily",
+                    },
+                )()
+            ],
+        ),
+        patch("eval.run_oxford102.execute_identify", side_effect=capture_identify),
+        patch("eval.run_oxford102.load_settings", return_value=Settings(ollama_think=False)),
+        patch(
+            "eval.run_oxford102.FileSpeciesCatalog",
+            return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
+        ),
+    ):
+        exit_code = run_eval(_sample_args(output=output_path, think=True))
+
+    assert exit_code == 0
+    assert captured["ollama_think"] is True

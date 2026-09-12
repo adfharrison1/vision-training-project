@@ -20,6 +20,7 @@ def default_demo_image() -> Path:
 def run_demo(
     backend: Backend,
     settings: Settings | None = None,
+    ollama_think: bool | None = None,
     quiet: bool = False,
 ) -> int:
     settings = settings or load_settings()
@@ -34,5 +35,6 @@ def run_demo(
         photos=str(sample_image),
         observation_id="demo",
         settings=settings,
+        ollama_think=ollama_think,
         quiet=quiet,
     )

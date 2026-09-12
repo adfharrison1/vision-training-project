@@ -24,6 +24,8 @@ uv run plant-id demo --backend vlm
 uv run plant-id identify --backend vlm --photos /absolute/path/to/photo.jpg
 ```
 
+Ollama thinking mode defaults **off** (`PLANT_ID_OLLAMA_THINK=false`). Override per run with `--think` on `plant-id identify`, `plant-id demo`, or `eval.run_oxford102`.
+
 Ground truth eval (not runtime): `uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --identify`
 
 **Oxford 102 eval profiles** (needs `data/flowers/` with `setid.mat`):

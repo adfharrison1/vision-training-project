@@ -33,6 +33,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `--profile` | `quick` | `smoke`, `quick`, `mixed16`, or `full` |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
 | `--backend` | `vlm` | Composition backend (`vlm`, `classical`) |
+| `--think` / `--no-think` | `false` (or `PLANT_ID_OLLAMA_THINK`) | Enable Ollama thinking mode for this eval run |
 | `--split` | `test` | Oxford split (`train`, `validation`, `test`) |
 | `--limit N` | none | Override profile size |
 | `--max-duration` | none | Stop when exceeded (e.g. `30m`) |

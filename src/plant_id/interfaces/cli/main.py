@@ -28,6 +28,18 @@ def _add_quiet_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_think_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Enable Ollama thinking mode for this run "
+            "(default: false, or PLANT_ID_OLLAMA_THINK)."
+        ),
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plant-id",
@@ -45,6 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Identify a plant from 1–3 photograph paths.",
     )
     _add_backend_argument(identify_parser)
+    _add_think_argument(identify_parser)
     identify_parser.add_argument(
         "--photos",
         required=True,
@@ -61,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Identify the default demo sample image (requires data/flowers/).",
     )
     _add_backend_argument(demo_parser)
+    _add_think_argument(demo_parser)
     _add_quiet_argument(demo_parser)
 
     return parser
@@ -80,11 +94,12 @@ def main(argv: list[str] | None = None) -> int:
             backend=backend,
             photos=args.photos,
             observation_id=args.observation_id,
+            ollama_think=args.think,
             quiet=args.quiet,
         )
 
     if args.command == "demo":
-        return run_demo(backend=backend, quiet=args.quiet)
+        return run_demo(backend=backend, ollama_think=args.think, quiet=args.quiet)
 
     parser.error(f"Unknown command: {args.command}")
     return 2

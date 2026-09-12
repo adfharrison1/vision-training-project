@@ -100,3 +100,25 @@ def test_run_demo_calls_identify_with_sample_path() -> None:
     mock_identify.assert_called_once()
     assert mock_identify.call_args.kwargs["photos"] == str(sample)
     assert mock_identify.call_args.kwargs["observation_id"] == "demo"
+
+
+def test_run_identify_applies_ollama_think_override() -> None:
+    with patch(
+        "plant_id.interfaces.cli.commands.identify.identify_with_cli_presentation",
+        return_value=IdentifyRunResult(exit_code=0, result=_sample_result()),
+    ) as mock_identify:
+        run_identify("vlm", photos="photo.jpg", ollama_think=True)
+
+    assert mock_identify.call_args.args[3].ollama_think is True
+
+
+def test_cli_identify_think_flag_parsed() -> None:
+    from plant_id.interfaces.cli.main import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args(["identify", "--photos", "a.jpg", "--think"])
+    assert args.think is True
+    args = parser.parse_args(["identify", "--photos", "a.jpg", "--no-think"])
+    assert args.think is False
+    args = parser.parse_args(["identify", "--photos", "a.jpg"])
+    assert args.think is None
