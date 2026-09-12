@@ -194,6 +194,8 @@ Reports are written to `artifacts/eval/` with top-1/top-3 accuracy, per-class br
 
 **Improvement loop:** run eval → read JSON report failures → inspect traces in Opik UI or MCP → change one variable (prompt, catalog, threshold) → re-run the same profile with a new `--eval-run-id` suffix → compare reports.
 
+When committing prompt iterations, use **one commit per version** with Conventional Commits and a `prompt-vN` scope (see [Git commits](#git-commits) below).
+
 Enable Opik during eval runs:
 
 ```bash
@@ -202,6 +204,20 @@ uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1
 ```
 
 See `eval/README.md` for eval boundary rules and flag reference.
+
+### Git commits
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) with a scope in parentheses:
+
+```text
+feat(prompt-v2): disambiguate overlapping catalog labels and harden eval runs
+fix(opik): propagate identification errors from identify_trace
+chore(openspec): add houseplants-dataset change proposal
+```
+
+**Prompt iterations** (`PROMPT_TEMPLATE` / `prompt_version` in settings) should land in **dedicated commits** scoped as `feat(prompt-vN): …`, where `N` matches the version string (e.g. `closed-set-v2` → `prompt-v2`). Keep prompt changes separate from unrelated infrastructure or eval fixes so you can search history and bisect eval results easily.
+
+Prefer **small, atomic commits** in **dependency order** (lower layers before callers; tests with the code they cover).
 
 ## Agent shortcuts
 

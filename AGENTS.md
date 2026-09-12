@@ -124,6 +124,21 @@ Code under **`eval/`** is benchmark-only. It may import runtime/composition for 
 - OpenSpec main specs: `openspec/specs/`. Completed changes archived under `openspec/changes/archive/`. Next planned change: `classical-ml-backend` (stub in `openspec/changes/classical-ml-backend/`). Do not copy OpenSpec into code comments.
 - Prefer minimal diffs; no DI framework — manual composition in `interfaces/composition/`.
 
+### Git commits
+
+Use **Conventional Commits** with a short scope in parentheses:
+
+```text
+feat(prompt-v2): disambiguate overlapping catalog labels and harden eval runs
+fix(opik): propagate identification errors from identify_trace
+chore(openspec): add houseplants-dataset change proposal
+```
+
+- **Prompt changes:** one commit per prompt iteration, scope `prompt-vN` matching `prompt_version` in settings (e.g. `closed-set-v2` → `feat(prompt-v2): …`). Do not mix prompt edits with unrelated fixes in the same commit — that makes `git log --grep=prompt` and bisecting eval runs much harder.
+- **Small and atomic:** one logical change per commit; split infra, prompt, and eval tooling when they are independent.
+- **Dependency order:** commit foundational changes before dependents (e.g. domain/port → infrastructure → tests → docs) so history rebases cleanly and bisect stays meaningful.
+- Only commit when the user asks; do not push unless asked.
+
 ## Key paths
 
 ```text
