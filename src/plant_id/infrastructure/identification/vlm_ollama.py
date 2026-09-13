@@ -16,12 +16,14 @@ from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.observability.opik_tracing import (
     call_ollama_chat_traced,
     identify_trace,
+    record_content_retry,
     record_identify_outcome,
 )
 
 PROMPT_TEMPLATE = """Identify the flowering plant in the photograph(s).
 
-Return ONLY valid JSON: root object MUST be {{"predictions": [{{...}}, ...]}} — never a bare prediction object at the root.
+Return ONLY valid JSON: root object MUST be {{"predictions": [{{...}}, ...]}} — \
+never a bare prediction object at the root.
 Example shape:
 {{
   "predictions": [
@@ -45,6 +47,11 @@ Rules:
 Allowed class names:
 {class_names}
 """
+
+CONTENT_RETRY_SUFFIX = (
+    "Your previous response had empty content. Return ONLY the JSON object in the "
+    "message content field (not in thinking). Same schema as before."
+)
 
 
 class VlmOllamaIdentificationRepository:
@@ -93,19 +100,6 @@ class VlmOllamaIdentificationRepository:
         label_count = len(self._species_catalog.list_class_names())
         prompt = self._build_prompt()
         log_stage(2, 4, f"Built prompt ({label_count} species labels)")
-        request_payload = {
-            "model": self._settings.vision_model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
-                    "images": image_paths,
-                }
-            ],
-            "format": "json",
-            "think": self._settings.ollama_think,
-            "options": {"temperature": 0},
-        }
 
         ollama_message = (
             f"Calling Ollama ({self._settings.vision_model}) — "
@@ -113,11 +107,8 @@ class VlmOllamaIdentificationRepository:
         )
         try:
             with log_wait(3, 4, ollama_message):
-                response = call_ollama_chat_traced(
-                    self._settings,
-                    lambda: self._client.chat(**request_payload),
-                    model=self._settings.vision_model,
-                    prompt_version=self._settings.prompt_version,
+                response, retry_response, retry_info = self._call_with_optional_retry(
+                    prompt, image_paths
                 )
         except Exception as exc:
             raise IdentificationError(
@@ -132,12 +123,12 @@ class VlmOllamaIdentificationRepository:
                 "temperature": 0,
                 "think": self._settings.ollama_think,
             },
-            "response": response.model_dump(mode="json")
-            if hasattr(response, "model_dump")
-            else dict(response),
+            "response": self._response_to_raw(response),
         }
+        if retry_info is not None:
+            raw["retry"] = retry_info
 
-        content = self._extract_message_content(response)
+        content = self._resolve_content(response, retry_response)
         if not content:
             raise IdentificationError(
                 f"Empty model response for observation {observation.observation_id}.",
@@ -170,6 +161,115 @@ class VlmOllamaIdentificationRepository:
             },
         )
         return result, raw
+
+    def _call_with_optional_retry(
+        self,
+        prompt: str,
+        image_paths: list[str],
+    ) -> tuple[Any, Any | None, dict[str, Any] | None]:
+        first_response = self._chat(prompt, image_paths)
+        if not self._settings.ollama_content_retry_enabled:
+            return first_response, None, None
+
+        retry_reason = self._content_retry_reason(first_response)
+        if retry_reason is None:
+            return first_response, None, None
+
+        retry_prompt = f"{prompt}\n\n{CONTENT_RETRY_SUFFIX}"
+        retry_response = self._chat(retry_prompt, image_paths)
+        record_content_retry(self._settings, reason=retry_reason)
+        retry_info = {
+            "attempted": True,
+            "reason": retry_reason,
+            "request_suffix": CONTENT_RETRY_SUFFIX,
+            "response": self._response_to_raw(retry_response),
+        }
+        return first_response, retry_response, retry_info
+
+    def _chat(self, prompt: str, image_paths: list[str]) -> Any:
+        request_payload = {
+            "model": self._settings.vision_model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "images": image_paths,
+                }
+            ],
+            "format": "json",
+            "think": self._settings.ollama_think,
+            "options": {"temperature": 0},
+        }
+        return call_ollama_chat_traced(
+            self._settings,
+            lambda: self._client.chat(**request_payload),
+            model=self._settings.vision_model,
+            prompt_version=self._settings.prompt_version,
+        )
+
+    def _resolve_content(
+        self,
+        first_response: Any,
+        retry_response: Any | None,
+    ) -> str:
+        if retry_response is None:
+            return self._extract_message_content(first_response)
+
+        content = self._extract_message_content(retry_response)
+        if content:
+            return content
+        return self._extract_message_content(first_response)
+
+    @staticmethod
+    def _response_to_raw(response: Any) -> dict[str, Any]:
+        if hasattr(response, "model_dump"):
+            return response.model_dump(mode="json")
+        if isinstance(response, dict):
+            return response
+        return dict(response)
+
+    @staticmethod
+    def _message_content_only(response: Any) -> str:
+        message = response.message
+        return (message.content or "").strip()
+
+    @staticmethod
+    def _message_thinking(response: Any) -> str:
+        return (getattr(response.message, "thinking", None) or "").strip()
+
+    @staticmethod
+    def _thinking_has_parseable_predictions(text: str) -> bool:
+        stripped = text.strip()
+        if not stripped.startswith("{"):
+            return False
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            return False
+        predictions = payload.get("predictions") if isinstance(payload, dict) else None
+        return isinstance(predictions, list) and bool(predictions)
+
+    def _needs_content_channel_retry(self, response: Any) -> bool:
+        if self._message_content_only(response):
+            return False
+        return self._thinking_has_parseable_predictions(self._message_thinking(response))
+
+    def _needs_empty_response_retry(self, response: Any) -> bool:
+        if self._message_content_only(response):
+            return False
+        if self._thinking_has_parseable_predictions(self._message_thinking(response)):
+            return False
+        done_reason = getattr(response, "done_reason", None)
+        if done_reason == "length":
+            return True
+        return not self._message_thinking(response)
+
+    def _content_retry_reason(self, response: Any) -> str | None:
+        if self._needs_content_channel_retry(response):
+            return "json_in_thinking"
+        if self._needs_empty_response_retry(response):
+            return "empty_response"
+        return None
 
     @staticmethod
     def _extract_message_content(response: Any) -> str:

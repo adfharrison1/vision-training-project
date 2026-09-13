@@ -64,6 +64,22 @@ def test_vlm_identify_with_tracing_disabled_does_not_configure_opik(
     assert client.chat.call_count == 1
 
 
+def test_record_content_retry_updates_identify_span() -> None:
+    settings = Settings().model_copy(update={"opik_enabled": True})
+
+    with patch("opik.opik_context.update_current_span") as update_span:
+        from plant_id.infrastructure.observability import opik_tracing
+
+        opik_tracing.record_content_retry(settings, reason="json_in_thinking")
+
+    update_span.assert_called_once_with(
+        metadata={
+            "content_retry": True,
+            "content_retry_reason": "json_in_thinking",
+        }
+    )
+
+
 def test_vlm_identify_with_opik_unreachable_still_succeeds(
     settings: Settings,
     catalog: FileSpeciesCatalog,

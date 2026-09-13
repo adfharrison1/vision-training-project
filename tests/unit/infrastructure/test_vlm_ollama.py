@@ -8,7 +8,10 @@ from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.identification.classical_ml import ClassicalMlIdentificationRepository
-from plant_id.infrastructure.identification.vlm_ollama import VlmOllamaIdentificationRepository
+from plant_id.infrastructure.identification.vlm_ollama import (
+    CONTENT_RETRY_SUFFIX,
+    VlmOllamaIdentificationRepository,
+)
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
 
 
@@ -216,3 +219,148 @@ def test_vlm_identify_emits_stage_events(
     assert len(stage_calls) == 3
     assert stage_calls[0][3].startswith("Validated")
     assert wait_calls[0][3].startswith("Calling Ollama")
+
+
+def _valid_prediction_payload(
+    *,
+    species_label: str = "pink primrose",
+    evidence: str = "pink petals",
+    confidence: float = 0.95,
+) -> dict[str, object]:
+    return {
+        "predictions": [
+            {
+                "rank": 1,
+                "species_label": species_label,
+                "evidence": evidence,
+                "confidence": confidence,
+            }
+        ]
+    }
+
+
+def _mock_response(
+    *,
+    content: str = "",
+    thinking: str = "",
+    done_reason: str | None = None,
+) -> MagicMock:
+    response = MagicMock()
+    response.message.content = content
+    response.message.thinking = thinking
+    response.done_reason = done_reason
+    response.model_dump.return_value = {
+        "message": {"content": content, "thinking": thinking},
+        "done_reason": done_reason,
+    }
+    return response
+
+
+def test_thinking_has_parseable_predictions() -> None:
+    valid = json.dumps(_valid_prediction_payload())
+    assert VlmOllamaIdentificationRepository._thinking_has_parseable_predictions(valid)
+    assert not VlmOllamaIdentificationRepository._thinking_has_parseable_predictions("")
+    assert not VlmOllamaIdentificationRepository._thinking_has_parseable_predictions(
+        '{"predictions": []}'
+    )
+    assert not VlmOllamaIdentificationRepository._thinking_has_parseable_predictions("not json")
+
+
+def test_json_in_thinking_triggers_retry_and_uses_retry_content(
+    settings: Settings,
+    catalog: FileSpeciesCatalog,
+    tmp_path: Path,
+) -> None:
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake")
+    thinking_json = json.dumps(_valid_prediction_payload(species_label="tiger lily"))
+    retry_content = json.dumps(_valid_prediction_payload(species_label="pink primrose"))
+
+    client = MagicMock()
+    client.chat.side_effect = [
+        _mock_response(content="", thinking=thinking_json),
+        _mock_response(content=retry_content),
+    ]
+
+    repo = VlmOllamaIdentificationRepository(settings, catalog, client=client)
+    observation = Observation(observation_id="obs-retry-success", photo_paths=[photo])
+
+    result, raw = repo.identify(observation)
+
+    assert client.chat.call_count == 2
+    assert CONTENT_RETRY_SUFFIX in client.chat.call_args_list[1].kwargs["messages"][0]["content"]
+    assert result.predictions[0].species_label == "pink primrose"
+    assert raw["retry"]["attempted"] is True
+    assert raw["retry"]["reason"] == "json_in_thinking"
+
+
+def test_json_in_thinking_retry_falls_back_to_first_thinking(
+    settings: Settings,
+    catalog: FileSpeciesCatalog,
+    tmp_path: Path,
+) -> None:
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake")
+    thinking_json = json.dumps(_valid_prediction_payload(species_label="tiger lily"))
+
+    client = MagicMock()
+    client.chat.side_effect = [
+        _mock_response(content="", thinking=thinking_json),
+        _mock_response(content="", thinking=""),
+    ]
+
+    repo = VlmOllamaIdentificationRepository(settings, catalog, client=client)
+    observation = Observation(observation_id="obs-retry-fallback", photo_paths=[photo])
+
+    result, raw = repo.identify(observation)
+
+    assert client.chat.call_count == 2
+    assert result.predictions[0].species_label == "tiger lily"
+    assert raw["retry"]["reason"] == "json_in_thinking"
+
+
+def test_content_retry_disabled_uses_thinking_fallback_only(
+    catalog: FileSpeciesCatalog,
+    tmp_path: Path,
+) -> None:
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake")
+    thinking_json = json.dumps(_valid_prediction_payload())
+
+    client = MagicMock()
+    client.chat.return_value = _mock_response(content="", thinking=thinking_json)
+
+    settings = Settings(ollama_content_retry_enabled=False)
+    repo = VlmOllamaIdentificationRepository(settings, catalog, client=client)
+    observation = Observation(observation_id="obs-no-retry", photo_paths=[photo])
+
+    result, raw = repo.identify(observation)
+
+    assert client.chat.call_count == 1
+    assert result.predictions[0].species_label == "pink primrose"
+    assert "retry" not in raw
+
+
+def test_wholly_empty_response_triggers_retry(
+    settings: Settings,
+    catalog: FileSpeciesCatalog,
+    tmp_path: Path,
+) -> None:
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"fake")
+    retry_content = json.dumps(_valid_prediction_payload(species_label="tiger lily"))
+
+    client = MagicMock()
+    client.chat.side_effect = [
+        _mock_response(content="", thinking=""),
+        _mock_response(content=retry_content),
+    ]
+
+    repo = VlmOllamaIdentificationRepository(settings, catalog, client=client)
+    observation = Observation(observation_id="obs-empty-retry", photo_paths=[photo])
+
+    result, raw = repo.identify(observation)
+
+    assert client.chat.call_count == 2
+    assert result.predictions[0].species_label == "tiger lily"
+    assert raw["retry"]["reason"] == "empty_response"

@@ -38,6 +38,19 @@ class Settings(BaseSettings):
             "Default false avoids token-budget death spirals on closed-set identify."
         ),
     )
+    ollama_content_retry_enabled: bool = Field(
+        default=True,
+        description=(
+            "When true, retry once when the model returns empty content but JSON in "
+            "thinking, or a wholly empty/truncated response."
+        ),
+    )
+    ollama_content_retry_max: int = Field(
+        default=1,
+        ge=1,
+        le=1,
+        description="Maximum content-channel retries per observation (fixed at 1).",
+    )
     vision_model: str = Field(
         default="qwen3-vl:2b",
         description=(

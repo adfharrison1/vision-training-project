@@ -52,6 +52,7 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 |---|---|---|
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama base URL |
 | `OLLAMA_THINK` | `false` | Enable qwen3 thinking mode on identify (use `--think` per run to override) |
+| `OLLAMA_CONTENT_RETRY_ENABLED` | `true` | Retry once when content is empty but JSON is in thinking, or response is wholly empty |
 | `VISION_MODEL` | `qwen3-vl:2b` | Ollama vision model tag (use `qwen3-vl:8b` for accuracy comparison) |
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |

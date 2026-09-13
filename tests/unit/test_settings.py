@@ -13,6 +13,7 @@ def test_settings_defaults_use_project_paths() -> None:
     assert settings.prompt_version == "closed-set-v3"
     assert settings.ollama_timeout_seconds == 600.0
     assert settings.ollama_think is False
+    assert settings.ollama_content_retry_enabled is True
 
 
 def test_settings_load_from_environment(monkeypatch) -> None:
@@ -47,3 +48,11 @@ def test_settings_ollama_think_from_environment(monkeypatch) -> None:
 
     monkeypatch.setenv("PLANT_ID_OLLAMA_THINK", "true")
     assert Settings().ollama_think is True
+
+
+def test_settings_ollama_content_retry_from_environment(monkeypatch) -> None:
+    monkeypatch.delenv("PLANT_ID_OLLAMA_CONTENT_RETRY_ENABLED", raising=False)
+    assert Settings().ollama_content_retry_enabled is True
+
+    monkeypatch.setenv("PLANT_ID_OLLAMA_CONTENT_RETRY_ENABLED", "false")
+    assert Settings().ollama_content_retry_enabled is False

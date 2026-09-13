@@ -260,3 +260,24 @@ def record_identify_outcome(
         opik_context.update_current_span(metadata=metadata)
     except Exception as exc:
         logger.debug("Opik identify outcome update failed (non-fatal): %s", exc)
+
+
+def record_content_retry(
+    settings: Settings,
+    *,
+    reason: str,
+) -> None:
+    if not settings.opik_enabled:
+        return
+
+    try:
+        from opik import opik_context
+
+        opik_context.update_current_span(
+            metadata={
+                "content_retry": True,
+                "content_retry_reason": reason,
+            }
+        )
+    except Exception as exc:
+        logger.debug("Opik content retry update failed (non-fatal): %s", exc)
