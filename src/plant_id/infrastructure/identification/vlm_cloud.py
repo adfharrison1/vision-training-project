@@ -15,10 +15,16 @@ from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation, ObservationResult
 from plant_id.domain.repositories import SpeciesCatalogRepository
 from plant_id.infrastructure.config.settings import Settings
-from plant_id.infrastructure.identification.vlm_common import build_vlm_prompt, parse_vlm_result
+from plant_id.infrastructure.identification.vlm_common import (
+    INVALID_LABEL_RETRY_SUFFIX,
+    build_vlm_prompt,
+    is_unknown_species_label_error,
+    parse_vlm_result,
+)
 from plant_id.infrastructure.observability.opik_tracing import (
     call_openai_chat_traced,
     identify_trace,
+    record_content_retry,
     record_identify_outcome,
 )
 
@@ -135,7 +141,7 @@ class VlmCloudIdentificationRepository:
                 f"{observation.observation_id}: {exc}"
             ) from exc
 
-        raw = {
+        raw: dict[str, Any] = {
             "request": {
                 "model": self._settings.vlm_cloud_model,
                 "prompt_version": self._settings.prompt_version,
@@ -147,29 +153,39 @@ class VlmCloudIdentificationRepository:
             "response": response.model_dump(mode="json"),
         }
 
-        content = (response.choices[0].message.content or "").strip()
-        if not content:
-            raise IdentificationError(
-                f"Empty model response for observation {observation.observation_id}.",
-                raw=raw,
-            )
-
         try:
-            parsed = json.loads(content)
-            result = parse_vlm_result(
-                observation,
-                parsed,
-                settings=self._settings,
-                species_catalog=self._species_catalog,
-                model_tag=self._settings.vlm_cloud_model,
-            )
-        except (json.JSONDecodeError, ValueError, IdentificationError) as exc:
-            message = (
-                f"Invalid model JSON for observation {observation.observation_id}: {exc}"
-            )
-            if isinstance(exc, IdentificationError):
-                raise IdentificationError(str(exc), raw=raw) from exc
-            raise IdentificationError(message, raw=raw) from exc
+            result = self._result_from_response(observation, response, raw)
+        except IdentificationError as exc:
+            if not (
+                self._settings.invalid_label_retry_enabled
+                and is_unknown_species_label_error(exc)
+            ):
+                raise
+
+            record_content_retry(self._settings, reason="unknown_species_label")
+            retry_parts: list[dict[str, Any]] = [
+                {"type": "text", "text": f"{prompt}\n\n{INVALID_LABEL_RETRY_SUFFIX}"},
+                *content_parts[1:],
+            ]
+            try:
+                retry_response = self._chat(retry_parts)
+            except Exception as retry_exc:
+                raise IdentificationError(
+                    f"Cloud VLM label retry failed for observation "
+                    f"{observation.observation_id}: {retry_exc}",
+                    raw=raw,
+                ) from retry_exc
+
+            raw["invalid_label_retry"] = {
+                "attempted": True,
+                "reason": "unknown_species_label",
+                "request_suffix": INVALID_LABEL_RETRY_SUFFIX,
+                "response": retry_response.model_dump(mode="json"),
+            }
+            try:
+                result = self._result_from_response(observation, retry_response, raw)
+            except IdentificationError as retry_parse_exc:
+                raise IdentificationError(str(retry_parse_exc), raw=raw) from retry_parse_exc
 
         log_stage(4, 4, "Parsed model response")
         record_identify_outcome(
@@ -186,6 +202,35 @@ class VlmCloudIdentificationRepository:
             },
         )
         return result, raw
+
+    def _result_from_response(
+        self,
+        observation: Observation,
+        response: Any,
+        raw: dict[str, Any],
+    ) -> ObservationResult:
+        content = (response.choices[0].message.content or "").strip()
+        if not content:
+            raise IdentificationError(
+                f"Empty model response for observation {observation.observation_id}.",
+                raw=raw,
+            )
+        try:
+            parsed = json.loads(content)
+            return parse_vlm_result(
+                observation,
+                parsed,
+                settings=self._settings,
+                species_catalog=self._species_catalog,
+                model_tag=self._settings.vlm_cloud_model,
+            )
+        except (json.JSONDecodeError, ValueError, IdentificationError) as exc:
+            message = (
+                f"Invalid model JSON for observation {observation.observation_id}: {exc}"
+            )
+            if isinstance(exc, IdentificationError):
+                raise IdentificationError(str(exc), raw=raw) from exc
+            raise IdentificationError(message, raw=raw) from exc
 
     def _chat(self, content_parts: list[dict[str, Any]]) -> Any:
         def _create() -> Any:

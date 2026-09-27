@@ -13,7 +13,12 @@ from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation, ObservationResult
 from plant_id.domain.repositories import SpeciesCatalogRepository
 from plant_id.infrastructure.config.settings import Settings
-from plant_id.infrastructure.identification.vlm_common import build_vlm_prompt, parse_vlm_result
+from plant_id.infrastructure.identification.vlm_common import (
+    INVALID_LABEL_RETRY_SUFFIX,
+    build_vlm_prompt,
+    is_unknown_species_label_error,
+    parse_vlm_result,
+)
 from plant_id.infrastructure.observability.opik_tracing import (
     call_ollama_chat_traced,
     identify_trace,
@@ -118,12 +123,47 @@ class VlmOllamaIdentificationRepository:
                 model_tag=self._settings.vision_model,
             )
         except (json.JSONDecodeError, ValueError, IdentificationError) as exc:
-            message = (
-                f"Invalid model JSON for observation {observation.observation_id}: {exc}"
-            )
-            if isinstance(exc, IdentificationError):
-                raise IdentificationError(str(exc), raw=raw) from exc
-            raise IdentificationError(message, raw=raw) from exc
+            if (
+                isinstance(exc, IdentificationError)
+                and self._settings.invalid_label_retry_enabled
+                and is_unknown_species_label_error(exc)
+            ):
+                record_content_retry(self._settings, reason="unknown_species_label")
+                retry_prompt = f"{prompt}\n\n{INVALID_LABEL_RETRY_SUFFIX}"
+                retry_response = self._chat(retry_prompt, image_paths)
+                raw["invalid_label_retry"] = {
+                    "attempted": True,
+                    "reason": "unknown_species_label",
+                    "request_suffix": INVALID_LABEL_RETRY_SUFFIX,
+                    "response": self._response_to_raw(retry_response),
+                }
+                retry_content = self._extract_message_content(retry_response)
+                if not retry_content:
+                    raise IdentificationError(str(exc), raw=raw) from exc
+                try:
+                    retry_parsed = json.loads(retry_content)
+                    result = parse_vlm_result(
+                        observation,
+                        retry_parsed,
+                        settings=self._settings,
+                        species_catalog=self._species_catalog,
+                        model_tag=self._settings.vision_model,
+                    )
+                except (json.JSONDecodeError, ValueError, IdentificationError) as retry_exc:
+                    message = (
+                        f"Invalid model JSON for observation {observation.observation_id}: "
+                        f"{retry_exc}"
+                    )
+                    if isinstance(retry_exc, IdentificationError):
+                        raise IdentificationError(str(retry_exc), raw=raw) from retry_exc
+                    raise IdentificationError(message, raw=raw) from retry_exc
+            else:
+                message = (
+                    f"Invalid model JSON for observation {observation.observation_id}: {exc}"
+                )
+                if isinstance(exc, IdentificationError):
+                    raise IdentificationError(str(exc), raw=raw) from exc
+                raise IdentificationError(message, raw=raw) from exc
 
         log_stage(4, 4, "Parsed model response")
         record_identify_outcome(

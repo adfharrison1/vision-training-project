@@ -88,3 +88,11 @@ def test_settings_vlm_cloud_defaults_and_env(monkeypatch) -> None:
     assert settings.vlm_cloud_vendor == "fireworks"
     assert settings.vlm_cloud_timeout_seconds == 90.0
     assert settings.vlm_cloud_reasoning_effort == "high"
+
+
+def test_settings_invalid_label_retry_from_environment(monkeypatch) -> None:
+    monkeypatch.delenv("PLANT_ID_INVALID_LABEL_RETRY_ENABLED", raising=False)
+    assert Settings().invalid_label_retry_enabled is True
+
+    monkeypatch.setenv("PLANT_ID_INVALID_LABEL_RETRY_ENABLED", "false")
+    assert Settings().invalid_label_retry_enabled is False

@@ -16,6 +16,7 @@ def _settings(**updates) -> Settings:
         "vlm_cloud_api_key": "test-key",
         "vlm_cloud_base_url": "https://example.com/v1",
         "vlm_cloud_model": "accounts/fireworks/models/qwen3-vl-8b-instruct",
+        "vlm_cloud_reasoning_effort": "none",
     }
     base.update(updates)
     return Settings(**base)
@@ -106,6 +107,59 @@ def test_vlm_cloud_omits_reasoning_effort_when_unset(tmp_path: Path) -> None:
     repo.identify(observation)
 
     assert "reasoning_effort" not in client.chat.completions.create.call_args.kwargs
+
+
+def test_vlm_cloud_retries_unknown_species_label(tmp_path: Path) -> None:
+    photo = tmp_path / "flower.jpg"
+    photo.write_bytes(b"fake")
+    bad_message = MagicMock()
+    bad_message.content = json.dumps(
+        {
+            "predictions": [
+                {
+                    "rank": 1,
+                    "species_label": "calendula",
+                    "evidence": "orange flower",
+                    "confidence": 0.9,
+                }
+            ]
+        }
+    )
+    good_message = MagicMock()
+    good_message.content = json.dumps(
+        {
+            "predictions": [
+                {
+                    "rank": 1,
+                    "species_label": "tiger lily",
+                    "evidence": "spots",
+                    "confidence": 0.9,
+                }
+            ]
+        }
+    )
+    bad_choice = MagicMock()
+    bad_choice.message = bad_message
+    bad_response = MagicMock()
+    bad_response.choices = [bad_choice]
+    bad_response.model_dump.return_value = {"attempt": 1}
+
+    good_choice = MagicMock()
+    good_choice.message = good_message
+    good_response = MagicMock()
+    good_response.choices = [good_choice]
+    good_response.model_dump.return_value = {"attempt": 2}
+
+    client = MagicMock()
+    client.chat.completions.create.side_effect = [bad_response, good_response]
+    repo = _repo(client=client)
+    observation = Observation(observation_id="obs-cloud", photo_paths=[photo])
+
+    result, raw = repo.identify(observation)
+
+    assert result.predictions[0].species_label == "tiger lily"
+    assert client.chat.completions.create.call_count == 2
+    assert raw["invalid_label_retry"]["attempted"] is True
 
 
 def test_vlm_cloud_identify_rejects_invalid_json(tmp_path: Path) -> None:

@@ -37,6 +37,16 @@ Allowed class names:
 {class_names}
 """
 
+INVALID_LABEL_RETRY_SUFFIX = (
+    "Your previous JSON used a species_label that is NOT in the allowed list. "
+    "Return ONLY valid JSON again. Every species_label MUST match one allowed "
+    "class name exactly (case and spelling)."
+)
+
+
+def is_unknown_species_label_error(exc: BaseException) -> bool:
+    return isinstance(exc, IdentificationError) and str(exc).startswith("Unknown species_label:")
+
 
 def build_vlm_prompt(species_catalog: SpeciesCatalogRepository) -> str:
     class_names = "\n".join(f"- {name}" for name in species_catalog.list_class_names())
@@ -59,7 +69,7 @@ def parse_vlm_result(
         raise IdentificationError("Model JSON must include a non-empty predictions list.")
 
     allowed = set(species_catalog.list_class_names())
-    predictions: list[Prediction] = []
+    parsed_items: list[dict[str, Any]] = []
     for item in raw_predictions[:3]:
         if not isinstance(item, dict):
             raise IdentificationError("Each prediction must be an object.")
@@ -69,8 +79,6 @@ def parse_vlm_result(
         confidence = item.get("confidence")
         if not isinstance(species_label, str) or not species_label.strip():
             raise IdentificationError("Each prediction requires species_label.")
-        if species_label not in allowed:
-            raise IdentificationError(f"Unknown species_label: {species_label}")
         if not isinstance(evidence, str) or not evidence.strip():
             raise IdentificationError("Each prediction requires evidence.")
         if not isinstance(rank, int):
@@ -80,16 +88,35 @@ def parse_vlm_result(
             if not isinstance(confidence, (int, float)):
                 raise IdentificationError("Prediction confidence must be numeric.")
             parsed_confidence = float(confidence)
+        parsed_items.append(
+            {
+                "rank": rank,
+                "species_label": species_label.strip(),
+                "evidence": evidence.strip(),
+                "confidence": parsed_confidence,
+            }
+        )
+
+    parsed_items.sort(key=lambda entry: entry["rank"])
+    top_rank_label = parsed_items[0]["species_label"]
+    if top_rank_label not in allowed:
+        raise IdentificationError(f"Unknown species_label: {top_rank_label}")
+
+    predictions: list[Prediction] = []
+    for entry in parsed_items:
+        if entry["species_label"] not in allowed:
+            continue
         predictions.append(
             Prediction(
-                rank=rank,
-                species_label=species_label,
-                evidence=evidence.strip(),
-                confidence=parsed_confidence,
+                rank=entry["rank"],
+                species_label=entry["species_label"],
+                evidence=entry["evidence"],
+                confidence=entry["confidence"],
             )
         )
 
-    predictions.sort(key=lambda prediction: prediction.rank)
+    if not predictions:
+        raise IdentificationError(f"Unknown species_label: {top_rank_label}")
     top_confidence = predictions[0].confidence
     uncertain = top_confidence is None or top_confidence < settings.uncertainty_threshold
 

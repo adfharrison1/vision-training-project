@@ -51,6 +51,13 @@ class Settings(BaseSettings):
         le=1,
         description="Maximum content-channel retries per observation (fixed at 1).",
     )
+    invalid_label_retry_enabled: bool = Field(
+        default=True,
+        description=(
+            "When true, retry once when the model JSON uses a species_label outside "
+            "the closed catalog."
+        ),
+    )
     vision_model: str = Field(
         default="qwen3-vl:2b",
         description=(
