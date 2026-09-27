@@ -1,4 +1,4 @@
-"""Self-hosted Opik tracing for Ollama VLM calls."""
+"""Self-hosted Opik tracing for VLM identification calls."""
 
 from __future__ import annotations
 
@@ -151,6 +151,44 @@ def _ollama_span_usage(response: Any) -> dict[str, int] | None:
     }
 
 
+def _openai_span_usage(response: Any) -> dict[str, int] | None:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    prompt = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion = int(getattr(usage, "completion_tokens", 0) or 0)
+    total = int(getattr(usage, "total_tokens", 0) or 0)
+    if prompt == 0 and completion == 0 and total == 0:
+        return None
+    if total == 0:
+        total = prompt + completion
+    return {
+        "prompt_tokens": prompt,
+        "completion_tokens": completion,
+        "total_tokens": total,
+    }
+
+
+def _openai_span_metadata(
+    response: Any,
+    *,
+    model: str,
+    prompt_version: str,
+    cloud_vendor: str | None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "model": model,
+        "prompt_version": prompt_version,
+        "inference_provider": "openai-compatible",
+    }
+    if cloud_vendor:
+        metadata["cloud_vendor"] = cloud_vendor
+    response_id = getattr(response, "id", None)
+    if response_id:
+        metadata["response_id"] = response_id
+    return metadata
+
+
 @contextmanager
 def identify_trace(
     settings: Settings,
@@ -158,6 +196,7 @@ def identify_trace(
     observation_id: str,
     backend: str,
     photo_count: int,
+    extra_metadata: dict[str, Any] | None = None,
 ) -> Iterator[None]:
     if not settings.opik_enabled:
         yield
@@ -169,6 +208,8 @@ def identify_trace(
         "backend": backend,
         "photo_count": photo_count,
     }
+    if extra_metadata:
+        metadata.update(extra_metadata)
     if session is not None:
         metadata.update(_eval_trace_metadata(session))
 
@@ -226,6 +267,53 @@ def call_ollama_chat_traced[T](
                 prompt_version=prompt_version,
             ),
             usage=_ollama_span_usage(response),
+        )
+        return response
+
+
+def call_openai_chat_traced[T](
+    settings: Settings,
+    chat_fn: Callable[[], T],
+    *,
+    model: str,
+    prompt_version: str,
+    cloud_vendor: str | None = None,
+) -> T:
+    if not settings.opik_enabled:
+        return chat_fn()
+
+    try:
+        _configure_opik(settings)
+        from opik import opik_context, start_as_current_span
+    except Exception as exc:
+        logger.debug("Opik openai.chat trace setup failed (non-fatal): %s", exc)
+        return chat_fn()
+
+    span_metadata: dict[str, Any] = {
+        "prompt_version": prompt_version,
+        "inference_provider": "openai-compatible",
+    }
+    if cloud_vendor:
+        span_metadata["cloud_vendor"] = cloud_vendor
+
+    with start_as_current_span(
+        name="openai.chat",
+        type="llm",
+        model=model,
+        provider="openai-compatible",
+        metadata=span_metadata,
+        project_name=settings.opik_project_name,
+        tags=["vlm-cloud", "plant-id"],
+    ):
+        response = chat_fn()
+        opik_context.update_current_span(
+            metadata=_openai_span_metadata(
+                response,
+                model=model,
+                prompt_version=prompt_version,
+                cloud_vendor=cloud_vendor,
+            ),
+            usage=_openai_span_usage(response),
         )
         return response
 

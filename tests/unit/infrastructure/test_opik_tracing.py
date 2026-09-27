@@ -115,3 +115,32 @@ def test_vlm_identify_with_opik_unreachable_still_succeeds(
 
     assert result.predictions[0].species_label == "pink primrose"
     assert client.chat.call_count == 1
+
+
+def test_call_openai_chat_traced_records_usage() -> None:
+    settings = Settings().model_copy(update={"opik_enabled": True})
+    response = MagicMock()
+    response.id = "resp-1"
+    usage = MagicMock()
+    usage.prompt_tokens = 10
+    usage.completion_tokens = 5
+    usage.total_tokens = 15
+    response.usage = usage
+
+    with patch("plant_id.infrastructure.observability.opik_tracing._configure_opik"):
+        with patch("opik.start_as_current_span") as start_span:
+            with patch("opik.opik_context.update_current_span") as update_span:
+                start_span.return_value.__enter__ = MagicMock(return_value=None)
+                start_span.return_value.__exit__ = MagicMock(return_value=False)
+                from plant_id.infrastructure.observability import opik_tracing
+
+                opik_tracing.call_openai_chat_traced(
+                    settings,
+                    lambda: response,
+                    model="cloud-model",
+                    prompt_version="closed-set-v3",
+                    cloud_vendor="fireworks",
+                )
+
+    update_span.assert_called_once()
+    assert update_span.call_args.kwargs["usage"]["total_tokens"] == 15
