@@ -45,7 +45,12 @@ Backend selection and dependency wiring SHALL occur in `interfaces/composition`,
 #### Scenario: CLI backend flag
 
 - **WHEN** a developer runs identify with `--backend vlm`
-- **THEN** the CLI SHALL wire the VLM repository implementation (with injected species catalog) into the use case before execution
+- **THEN** the CLI SHALL wire the local Ollama VLM repository implementation (with injected species catalog) into the use case before execution
+
+#### Scenario: CLI cloud backend flag
+
+- **WHEN** a developer runs identify with `--backend vlm-cloud`
+- **THEN** the CLI SHALL wire the cloud VLM repository implementation (with injected species catalog) into the use case before execution
 
 ### Requirement: Shared result model across backends
 
@@ -55,15 +60,6 @@ All identification repository implementations SHALL return the same `Observation
 
 - **WHEN** identification succeeds via any runtime backend
 - **THEN** the result SHALL use the shared prediction schema suitable for Oxford 102 eval metrics
-
-### Requirement: Runtime repository local-only
-
-Runtime `IdentificationRepository` implementations SHALL NOT call external plant identification APIs.
-
-#### Scenario: VLM repository isolation
-
-- **WHEN** the VLM repository executes
-- **THEN** it SHALL communicate only with local Ollama and project prompt/RAG assets
 
 ### Requirement: Eval adapters separate from repository port
 
@@ -115,3 +111,22 @@ Eval modules MAY enable tracing for benchmark runs in future work but SHALL NOT 
 
 - **WHEN** eval code exports traces
 - **THEN** it SHALL target the same self-hosted Opik instance or leave tracing disabled
+
+### Requirement: Runtime repository boundaries
+
+Runtime `IdentificationRepository` implementations SHALL NOT call third-party plant identification APIs (Pl@ntNet, iNaturalist, and similar species-ID services).
+
+#### Scenario: No plant-ID SaaS in repositories
+
+- **WHEN** any runtime identification repository executes
+- **THEN** it SHALL NOT invoke external plant identification SaaS APIs
+
+#### Scenario: Hosted VLM via vlm-cloud
+
+- **WHEN** backend `vlm-cloud` is selected and configured
+- **THEN** the repository SHALL call only the user-configured OpenAI-compatible vision chat endpoint and project prompt assets
+
+#### Scenario: Local VLM via vlm
+
+- **WHEN** backend `vlm` is selected
+- **THEN** the repository SHALL communicate only with local Ollama and project prompt assets

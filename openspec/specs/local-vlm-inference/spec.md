@@ -7,7 +7,7 @@ Send photographs of a single plant to a locally running vision-language model an
 
 ### Requirement: VLM identification repository
 
-The infrastructure layer SHALL provide a VLM implementation of `IdentificationRepository` using local Ollama.
+The infrastructure layer SHALL provide a local Ollama implementation of `IdentificationRepository` selected when runtime backend is `vlm`.
 
 #### Scenario: Observation with multiple photos
 
@@ -67,12 +67,17 @@ Identification inference SHALL use fixed model and generation settings documente
 
 ### Requirement: Runtime isolation from external identification APIs
 
-The inference module SHALL NOT call Pl@ntNet, iNaturalist, or other external identification services.
+The local Ollama inference module SHALL NOT call Pl@ntNet, iNaturalist, or other external plant identification services.
 
 #### Scenario: Local-only inference path
 
-- **WHEN** the runtime identification code path executes
-- **THEN** it SHALL communicate only with the local Ollama service
+- **WHEN** backend `vlm` executes the local VLM code path
+- **THEN** it SHALL communicate only with the local Ollama service for model inference
+
+#### Scenario: Ollama-only transport for vlm backend
+
+- **WHEN** backend `vlm` executes the local VLM code path
+- **THEN** it SHALL NOT call third-party plant identification APIs
 
 ### Requirement: Pipeline progress events
 
