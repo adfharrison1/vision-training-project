@@ -99,7 +99,7 @@ EOF
 
 case "${1:-}" in
   up)
-    compose up -d "${@:2}"
+    compose up -d --pull never "${@:2}"
     echo
     echo "Opik UI:  http://localhost:5173"
     echo "Opik API: http://127.0.0.1:5173/api"
