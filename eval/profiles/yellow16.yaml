@@ -1,0 +1,37 @@
+# Yellow16: 16-image eval profile with 10 yellow-forward species + 6 contrast rows.
+# Includes primula + canterbury bells (known yellow-flower confusion pair).
+# Run: uv run python -m eval.run_oxford102 --profile yellow16 --eval-run-id ...
+
+observations:
+  - species: yellow iris
+    image: image_06346.jpg
+  - species: buttercup
+    image: image_04626.jpg
+  - species: globe-flower
+    image: image_06653.jpg
+  - species: barbeton daisy
+    image: image_02189.jpg
+  - species: common dandelion
+    image: image_06297.jpg
+  - species: californian poppy
+    image: image_03182.jpg
+  - species: colt's foot
+    image: image_03994.jpg
+  - species: wallflower
+    image: image_00947.jpg
+  - species: primula
+    image: image_03641.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: canterbury bells
+    image: image_06613.jpg
+  - species: tiger lily
+    image: image_07162.jpg
+  - species: sweet pea
+    image: image_05629.jpg
+  - species: bird of paradise
+    image: image_03284.jpg
+  - species: purple coneflower
+    image: image_03828.jpg
+  - species: rose
+    image: image_01143.jpg

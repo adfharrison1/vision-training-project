@@ -46,6 +46,30 @@ def test_mixed16_manifest_has_sixteen_distinct_species() -> None:
     assert mixed16[1].image_name == "image_05147.jpg"
 
 
+def test_yellow16_manifest_has_sixteen_rows_with_ten_yellow_species() -> None:
+    manifest = load_profile_manifest(Path("eval/profiles/yellow16.yaml"))
+    yellow16 = select_manifest_observations(manifest, "yellow16")
+
+    yellow_species = {
+        "yellow iris",
+        "buttercup",
+        "globe-flower",
+        "barbeton daisy",
+        "common dandelion",
+        "californian poppy",
+        "colt's foot",
+        "wallflower",
+        "primula",
+        "english marigold",
+    }
+
+    assert len(yellow16) == 16
+    assert len({row.species for row in yellow16}) == 16
+    assert sum(1 for row in yellow16 if row.species in yellow_species) >= 8
+    assert yellow16[8].species == "primula"
+    assert yellow16[8].image_name == "image_03641.jpg"
+
+
 def test_validate_manifest_rejects_species_image_mismatch() -> None:
     from eval.dataset import default_dataset_root, load_oxford_splits, split_image_indices
     from eval.profile_manifest import ProfileObservationSpec, validate_manifest_against_dataset

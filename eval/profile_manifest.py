@@ -13,12 +13,18 @@ from eval.oxford102_ground_truth import (
     project_root,
 )
 
-PROFILE_OBSERVATION_COUNTS = {"smoke": 4, "quick": 8, "mixed16": 16}
+PROFILE_OBSERVATION_COUNTS = {
+    "smoke": 4,
+    "quick": 8,
+    "mixed16": 16,
+    "yellow16": 16,
+}
 
 PROFILE_MANIFEST_FILES = {
     "smoke": "quick.yaml",
     "quick": "quick.yaml",
     "mixed16": "mixed16.yaml",
+    "yellow16": "yellow16.yaml",
 }
 
 
