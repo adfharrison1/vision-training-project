@@ -50,8 +50,12 @@ def test_top_k_metrics_with_synthetic_rows() -> None:
     assert metrics.observation_count == 3
     assert metrics.success_count == 2
     assert metrics.failure_count == 1
+    assert metrics.parse_failure_count == 1
+    assert metrics.misclassification_count == 1
     assert metrics.top1_accuracy == 0.5
     assert metrics.top3_accuracy == 1.0
+    assert metrics.top1_accuracy_all == 1 / 3
+    assert metrics.top3_accuracy_all == 2 / 3
     assert metrics.per_class["tiger lily"].top1 == 1
     assert metrics.per_class["sweet pea"].top3 == 1
 

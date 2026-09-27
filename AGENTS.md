@@ -48,6 +48,7 @@ Canonical slash-command prompts live in **`agent/commands/`** (agent-agnostic). 
 |---|---|
 | `/eval-run` | Start Oxford 102 eval (default profile `quick`; background run) |
 | `/eval-triage` | Summarize latest eval report failures and next steps |
+| `/eval-debug` | Post-mortem eval failures (split metrics + forensics JSON) |
 | `/verify` | Post-change loop: sync, verify-env, ruff, lint-imports, pytest |
 | `/opik-up` | Start/check local Opik via `./scripts/opik.sh` |
 | `/identify` | Ad-hoc VLM identify on absolute photo path(s) |

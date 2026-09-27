@@ -6,6 +6,7 @@ Canonical prompt templates for common plant-id developer workflows. Edit files h
 |---|---|---|
 | `/eval-run` | [eval-run.md](eval-run.md) | Start Oxford 102 eval (default: `quick` profile) |
 | `/eval-triage` | [eval-triage.md](eval-triage.md) | Summarize eval failures and next steps |
+| `/eval-debug` | [eval-debug.md](eval-debug.md) | Post-mortem parse vs misclass failures using forensics JSON |
 | `/verify` | [verify.md](verify.md) | Post-change verify loop |
 | `/opik-up` | [opik-up.md](opik-up.md) | Start local Opik Docker stack |
 | `/identify` | [identify.md](identify.md) | Ad-hoc VLM identify on photo path(s) |
@@ -24,6 +25,7 @@ From the repository root:
 ```bash
 ln -sf ../../agent/commands/eval-run.md .cursor/commands/eval-run.md
 ln -sf ../../agent/commands/eval-triage.md .cursor/commands/eval-triage.md
+ln -sf ../../agent/commands/eval-debug.md .cursor/commands/eval-debug.md
 ln -sf ../../agent/commands/verify.md .cursor/commands/verify.md
 ln -sf ../../agent/commands/opik-up.md .cursor/commands/opik-up.md
 ln -sf ../../agent/commands/identify.md .cursor/commands/identify.md

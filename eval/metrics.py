@@ -34,8 +34,12 @@ class EvalMetrics:
     observation_count: int
     success_count: int
     failure_count: int
+    parse_failure_count: int
+    misclassification_count: int
     top1_accuracy: float
     top3_accuracy: float
+    top1_accuracy_all: float
+    top3_accuracy_all: float
     per_class: dict[str, PerClassMetrics] = field(default_factory=dict)
     observations: list[ObservationResultRow] = field(default_factory=list)
     failures: list[ObservationResultRow] = field(default_factory=list)
@@ -77,15 +81,27 @@ def compute_metrics(rows: list[ObservationResultRow]) -> EvalMetrics:
             stats.top3 += 1
 
     success_count = len(successful)
+    observation_count = len(rows)
     top1_accuracy = top1_hits / success_count if success_count else 0.0
     top3_accuracy = top3_hits / success_count if success_count else 0.0
 
+    top1_hits_all = sum(1 for row in rows if row.top1_match)
+    top3_hits_all = sum(1 for row in rows if row.top3_match)
+    top1_accuracy_all = top1_hits_all / observation_count if observation_count else 0.0
+    top3_accuracy_all = top3_hits_all / observation_count if observation_count else 0.0
+
+    misclassification_count = sum(1 for row in successful if not row.top1_match)
+
     return EvalMetrics(
-        observation_count=len(rows),
+        observation_count=observation_count,
         success_count=success_count,
         failure_count=len(failures),
+        parse_failure_count=len(failures),
+        misclassification_count=misclassification_count,
         top1_accuracy=top1_accuracy,
         top3_accuracy=top3_accuracy,
+        top1_accuracy_all=top1_accuracy_all,
+        top3_accuracy_all=top3_accuracy_all,
         per_class=per_class,
         observations=rows,
         failures=failures,

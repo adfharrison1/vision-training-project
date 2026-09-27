@@ -68,7 +68,20 @@ Local parity runs: `--backend vlm` (requires Ollama). Verify cloud settings: `uv
 
 When `PLANT_ID_OPIK_ENABLED=true`, each observation trace includes `eval_run_id`, `eval_profile`, and `ground_truth`. Report rows include `trace_id` when available.
 
-**Workflow:** read failures from the JSON report → inspect traces in Opik UI or MCP → change one thing → re-run the same profile.
+## Report metrics and failure forensics
+
+Eval reports include **split accuracy**:
+
+| Field | Meaning |
+|---|---|
+| `top1_accuracy` / `top3_accuracy` | On observations that parsed successfully |
+| `top1_accuracy_all` / `top3_accuracy_all` | Over every profile image (parse failures count as misses) |
+| `parse_failure_count` | Identification errors (e.g. off-catalog `species_label`) |
+| `misclassification_count` | Parsed OK but wrong top-1 |
+
+When parse failures occur, stderr prints `Failure forensics: artifacts/eval/<eval-run-id>/failures/`. Each JSON file captures `message_content`, truncated `reasoning_content_preview`, and retry output when `PLANT_ID_INVALID_LABEL_RETRY_ENABLED=true` (default). Use agent command **`/eval-debug`** for a structured post-mortem workflow.
+
+**Workflow:** read failures from the JSON report → open forensics JSON or Opik traces → change one thing → re-run the same profile.
 
 Eval JSON reports include **`inference.usage`** (aggregated prompt/completion/total tokens from API responses) and per-observation token fields when the backend returns usage. Dollar cost is not estimated in-repo; use your provider billing API or dashboard for rated spend.
 

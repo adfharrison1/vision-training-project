@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from eval.baselines.plantnet import identify_image, plantnet_api_key
 from eval.dataset import EvalProfile, list_eval_images, resolve_profile
+from eval.failure_forensics import eval_failures_dir, write_eval_failure_artifact
 from eval.inference_usage import aggregate_token_usage, usage_from_identification_raw
 from eval.metrics import (
     ObservationResultRow,
@@ -226,6 +227,17 @@ def _run_local_observation(
 
     tokens = _token_fields()
     if outcome.error_message or outcome.result is None:
+        error = outcome.error_message or "Identification returned no result."
+        if outcome.error_message:
+            write_eval_failure_artifact(
+                eval_run_id=eval_run_id,
+                image=image_path.name,
+                ground_truth=ground_truth,
+                observation_id=observation_id,
+                error=error,
+                trace_id=trace_id,
+                identification_raw=outcome.identification_raw,
+            )
         return ObservationResultRow(
             image=image_path.name,
             ground_truth=ground_truth,
@@ -235,7 +247,7 @@ def _run_local_observation(
             duration_ms=duration_ms,
             observation_id=observation_id,
             trace_id=trace_id,
-            error=outcome.error_message or "Identification returned no result.",
+            error=error,
             **tokens,
         )
 
@@ -404,6 +416,9 @@ def run_eval(args: argparse.Namespace) -> int:
         partial=partial,
         stopped_reason=stopped_reason,
         inference=_inference_section(settings, backend, rows),
+        failure_artifacts_dir=eval_failures_dir(eval_run_id)
+        if metrics.parse_failure_count
+        else None,
     )
     output_path = args.output or default_report_path(eval_run_id)
     write_report(report, output_path)
@@ -418,10 +433,20 @@ def run_eval(args: argparse.Namespace) -> int:
                 f"(prompt={usage.prompt_tokens} completion={usage.completion_tokens})"
             )
         print(
-            f"top-1={report.top1_accuracy:.3f} top-3={report.top3_accuracy:.3f} "
+            f"top-1={report.top1_accuracy:.3f} (success) / "
+            f"{report.top1_accuracy_all:.3f} (all) "
+            f"top-3={report.top3_accuracy:.3f} (success) / "
+            f"{report.top3_accuracy_all:.3f} (all) "
+            f"parse_failures={report.parse_failure_count} "
+            f"misclass={report.misclassification_count} "
             f"({report.success_count}/{report.observation_count} succeeded){usage_line}",
             file=sys.stderr,
         )
+        if report.failure_artifacts_dir:
+            print(
+                f"Failure forensics: {report.failure_artifacts_dir}/",
+                file=sys.stderr,
+            )
 
     return 0
 

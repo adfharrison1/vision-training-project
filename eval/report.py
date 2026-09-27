@@ -93,9 +93,14 @@ class EvalReport(BaseModel):
     observation_count: int
     success_count: int
     failure_count: int
+    parse_failure_count: int
+    misclassification_count: int
     duration_total_ms: int
     top1_accuracy: float
     top3_accuracy: float
+    top1_accuracy_all: float
+    top3_accuracy_all: float
+    failure_artifacts_dir: str | None = None
     failures: list[FailureRow]
     observations: list[ObservationReportRow]
     per_class: dict[str, PerClassReportRow]
@@ -144,6 +149,7 @@ def build_report(
     partial: bool = False,
     stopped_reason: str | None = None,
     inference: InferenceReportSection | None = None,
+    failure_artifacts_dir: Path | None = None,
 ) -> EvalReport:
     observations = [_observation_row(row) for row in metrics.observations]
     failures = [
@@ -164,6 +170,10 @@ def build_report(
         for label, stats in metrics.per_class.items()
     }
 
+    artifacts_dir: str | None = None
+    if failure_artifacts_dir is not None and failure_artifacts_dir.is_dir():
+        artifacts_dir = str(failure_artifacts_dir)
+
     return EvalReport(
         eval_run_id=eval_run_id,
         profile=profile,
@@ -173,9 +183,14 @@ def build_report(
         observation_count=metrics.observation_count,
         success_count=metrics.success_count,
         failure_count=metrics.failure_count,
+        parse_failure_count=metrics.parse_failure_count,
+        misclassification_count=metrics.misclassification_count,
         duration_total_ms=duration_total_ms,
         top1_accuracy=metrics.top1_accuracy,
         top3_accuracy=metrics.top3_accuracy,
+        top1_accuracy_all=metrics.top1_accuracy_all,
+        top3_accuracy_all=metrics.top3_accuracy_all,
+        failure_artifacts_dir=artifacts_dir,
         failures=failures,
         observations=observations,
         per_class=per_class,
