@@ -36,6 +36,9 @@ class ObservationReportRow(BaseModel):
     trace_id: str | None = None
     error: str | None = None
     predictions: tuple[str, ...] = ()
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 class PerClassReportRow(BaseModel):
@@ -59,6 +62,26 @@ class PlantNetReportSection(BaseModel):
     observations: list[ObservationReportRow] = Field(default_factory=list)
 
 
+class InferenceTokenUsage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    observations_with_usage: int
+
+
+class InferenceReportSection(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    backend: str
+    model: str
+    prompt_version: str
+    cloud_vendor: str | None = None
+    cloud_base_url_host: str | None = None
+    usage: InferenceTokenUsage | None = None
+
+
 class EvalReport(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -80,6 +103,7 @@ class EvalReport(BaseModel):
     generated_at: str
     partial: bool = False
     stopped_reason: str | None = None
+    inference: InferenceReportSection | None = None
 
 
 def default_report_path(eval_run_id: str, artifacts_root: Path | None = None) -> Path:
@@ -101,6 +125,9 @@ def _observation_row(row: ObservationResultRow) -> ObservationReportRow:
         trace_id=row.trace_id,
         error=row.error,
         predictions=row.predictions,
+        prompt_tokens=row.prompt_tokens,
+        completion_tokens=row.completion_tokens,
+        total_tokens=row.total_tokens,
     )
 
 
@@ -116,6 +143,7 @@ def build_report(
     plantnet: PlantNetReportSection | None = None,
     partial: bool = False,
     stopped_reason: str | None = None,
+    inference: InferenceReportSection | None = None,
 ) -> EvalReport:
     observations = [_observation_row(row) for row in metrics.observations]
     failures = [
@@ -155,6 +183,7 @@ def build_report(
         generated_at=datetime.now(tz=UTC).isoformat(),
         partial=partial,
         stopped_reason=stopped_reason,
+        inference=inference,
     )
 
 

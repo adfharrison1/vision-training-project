@@ -33,7 +33,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 |---|---|---|
 | `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, or `full` |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
-| `--backend` | `vlm` | Composition backend (`vlm`, `classical`) |
+| `--backend` | `vlm-cloud` | Composition backend (`vlm`, `vlm-cloud`, `classical`); use `--backend vlm` for local Ollama |
 | `--think` / `--no-think` | `false` (or `PLANT_ID_OLLAMA_THINK`) | Enable Ollama thinking mode for this eval run |
 | `--split` | `test` | Oxford split (`train`, `validation`, `test`) |
 | `--limit N` | none | Override profile size |
@@ -51,11 +51,23 @@ uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg
 uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --identify
 ```
 
+## Cloud VLM (default eval backend)
+
+Eval defaults to **`vlm-cloud`** (OpenAI-compatible hosted inference). Configure:
+
+- `PLANT_ID_VLM_CLOUD_API_KEY` (canonical; you may `export PLANT_ID_VLM_CLOUD_API_KEY="$FIREWORKS_API_KEY"`)
+- `PLANT_ID_VLM_CLOUD_BASE_URL` (default Fireworks: `https://api.fireworks.ai/inference/v1`)
+- `PLANT_ID_VLM_CLOUD_MODEL` (example: `accounts/fireworks/models/qwen3-vl-8b-instruct`)
+
+Local parity runs: `--backend vlm` (requires Ollama). Verify cloud settings: `uv run plant-id verify-env --backend vlm-cloud`.
+
 ## Opik linkage (optional)
 
 When `PLANT_ID_OPIK_ENABLED=true`, each observation trace includes `eval_run_id`, `eval_profile`, and `ground_truth`. Report rows include `trace_id` when available.
 
 **Workflow:** read failures from the JSON report → inspect traces in Opik UI or MCP → change one thing → re-run the same profile.
+
+Eval JSON reports include **`inference.usage`** (aggregated prompt/completion/total tokens from API responses) and per-observation token fields when the backend returns usage. Dollar cost is not estimated in-repo; use your provider billing API or dashboard for rated spend.
 
 ```bash
 export PLANT_ID_OPIK_ENABLED=true

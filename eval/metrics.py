@@ -17,6 +17,9 @@ class ObservationResultRow:
     trace_id: str | None = None
     error: str | None = None
     predictions: tuple[str, ...] = ()
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 @dataclass

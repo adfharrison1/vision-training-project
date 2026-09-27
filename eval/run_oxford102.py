@@ -8,9 +8,11 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from eval.baselines.plantnet import identify_image, plantnet_api_key
 from eval.dataset import EvalProfile, list_eval_images, resolve_profile
+from eval.inference_usage import aggregate_token_usage, usage_from_identification_raw
 from eval.metrics import (
     ObservationResultRow,
     compute_metrics,
@@ -18,6 +20,7 @@ from eval.metrics import (
     top3_correct,
 )
 from eval.report import (
+    InferenceReportSection,
     ObservationReportRow,
     PlantNetReportSection,
     build_report,
@@ -77,9 +80,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--backend",
-        choices=["vlm", "classical"],
-        default="vlm",
-        help="Identification backend wired through composition",
+        choices=["vlm", "vlm-cloud", "classical"],
+        default="vlm-cloud",
+        help="Identification backend wired through composition (default: vlm-cloud)",
     )
     parser.add_argument(
         "--split",
@@ -141,6 +144,42 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _report_model_tag(settings, backend: Backend) -> str:
+    if backend == "vlm-cloud":
+        return settings.vlm_cloud_model
+    return settings.vision_model
+
+
+def _inference_section(
+    settings,
+    backend: Backend,
+    rows: list[ObservationResultRow],
+) -> InferenceReportSection:
+    cloud_host = None
+    if backend == "vlm-cloud":
+        cloud_host = urlparse(settings.vlm_cloud_base_url).netloc or None
+    per_observation: list[dict[str, int] | None] = []
+    for row in rows:
+        if row.prompt_tokens is None and row.completion_tokens is None and row.total_tokens is None:
+            per_observation.append(None)
+            continue
+        per_observation.append(
+            {
+                "prompt_tokens": row.prompt_tokens or 0,
+                "completion_tokens": row.completion_tokens or 0,
+                "total_tokens": row.total_tokens or 0,
+            }
+        )
+    return InferenceReportSection(
+        backend=backend,
+        model=_report_model_tag(settings, backend),
+        prompt_version=settings.prompt_version,
+        cloud_vendor=settings.vlm_cloud_vendor if backend == "vlm-cloud" else None,
+        cloud_base_url_host=cloud_host,
+        usage=aggregate_token_usage(per_observation),
+    )
+
+
 def _observation_id(eval_run_id: str, image_path: Path) -> str:
     return f"eval-{eval_run_id}-{image_path.stem}"
 
@@ -170,6 +209,22 @@ def _run_local_observation(
         trace_id = session.trace_id
 
     duration_ms = int((time.perf_counter() - started) * 1000)
+    usage = usage_from_identification_raw(getattr(outcome, "identification_raw", None))
+
+    def _token_fields() -> dict[str, int | None]:
+        if usage is None:
+            return {
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+            }
+        return {
+            "prompt_tokens": usage["prompt_tokens"],
+            "completion_tokens": usage["completion_tokens"],
+            "total_tokens": usage["total_tokens"],
+        }
+
+    tokens = _token_fields()
     if outcome.error_message or outcome.result is None:
         return ObservationResultRow(
             image=image_path.name,
@@ -181,6 +236,7 @@ def _run_local_observation(
             observation_id=observation_id,
             trace_id=trace_id,
             error=outcome.error_message or "Identification returned no result.",
+            **tokens,
         )
 
     predictions = tuple(prediction.species_label for prediction in outcome.result.predictions)
@@ -195,6 +251,7 @@ def _run_local_observation(
         observation_id=observation_id,
         trace_id=trace_id,
         predictions=predictions,
+        **tokens,
     )
 
 
@@ -338,7 +395,7 @@ def run_eval(args: argparse.Namespace) -> int:
     report = build_report(
         eval_run_id=eval_run_id,
         profile=profile,
-        model_tag=settings.vision_model,
+        model_tag=_report_model_tag(settings, backend),
         backend=backend,
         split=args.split,
         metrics=metrics,
@@ -346,15 +403,23 @@ def run_eval(args: argparse.Namespace) -> int:
         plantnet=plantnet_section,
         partial=partial,
         stopped_reason=stopped_reason,
+        inference=_inference_section(settings, backend, rows),
     )
     output_path = args.output or default_report_path(eval_run_id)
     write_report(report, output_path)
 
     if not args.quiet:
         print(f"Report written: {output_path}", file=sys.stderr)
+        usage_line = ""
+        if report.inference is not None and report.inference.usage is not None:
+            usage = report.inference.usage
+            usage_line = (
+                f" tokens={usage.total_tokens} "
+                f"(prompt={usage.prompt_tokens} completion={usage.completion_tokens})"
+            )
         print(
             f"top-1={report.top1_accuracy:.3f} top-3={report.top3_accuracy:.3f} "
-            f"({report.success_count}/{report.observation_count} succeeded)",
+            f"({report.success_count}/{report.observation_count} succeeded){usage_line}",
             file=sys.stderr,
         )
 

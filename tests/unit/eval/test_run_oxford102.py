@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from eval.run_oxford102 import parse_duration_budget, run_eval
+from eval.run_oxford102 import build_parser, parse_duration_budget, run_eval
 
 from plant_id.domain.models import ObservationResult, Prediction
 from plant_id.infrastructure.config.settings import Settings
@@ -15,6 +15,10 @@ def _mock_settings() -> object:
         (),
         {
             "vision_model": "qwen3-vl:2b",
+            "vlm_cloud_model": "accounts/fireworks/models/qwen3-vl-8b-instruct",
+            "vlm_cloud_base_url": "https://api.fireworks.ai/inference/v1",
+            "vlm_cloud_vendor": None,
+            "prompt_version": "closed-set-v3",
             "species_catalog_path": Path("resources/species_catalog/default.txt"),
         },
     )()
@@ -50,6 +54,82 @@ def test_parse_duration_budget_compound() -> None:
 def test_parse_duration_budget_rejects_invalid() -> None:
     with pytest.raises(ValueError, match="Invalid duration"):
         parse_duration_budget("not-a-duration")
+
+
+def test_build_parser_defaults_backend_to_vlm_cloud() -> None:
+    parser = build_parser()
+    args = parser.parse_args([])
+    assert args.backend == "vlm-cloud"
+
+
+def test_run_eval_aggregates_token_usage_in_report(tmp_path: Path) -> None:
+    output_path = tmp_path / "report-usage.json"
+    fake_result = ObservationResult(
+        observation_id="eval-unit-test-image_00001",
+        predictions=(
+            Prediction(
+                rank=1,
+                species_label="tiger lily",
+                evidence="test",
+                confidence=0.9,
+            ),
+        ),
+        model_tag="accounts/fireworks/models/deepseek-v4p1-flash",
+        prompt_version="closed-set-v1",
+    )
+    cloud_raw = {
+        "response": {
+            "usage": {
+                "prompt_tokens": 900,
+                "completion_tokens": 600,
+                "total_tokens": 1500,
+            }
+        }
+    }
+
+    with (
+        patch(
+            "eval.run_oxford102.list_eval_images",
+            return_value=[
+                type(
+                    "EvalImage",
+                    (),
+                    {
+                        "image_path": Path("data/flowers/jpg/image_00001.jpg"),
+                        "ground_truth": "tiger lily",
+                    },
+                )()
+            ],
+        ),
+        patch(
+            "eval.run_oxford102.execute_identify",
+            return_value=type(
+                "Outcome",
+                (),
+                {
+                    "exit_code": 0,
+                    "error_message": None,
+                    "result": fake_result,
+                    "identification_raw": cloud_raw,
+                },
+            )(),
+        ),
+        patch("eval.run_oxford102.load_settings", return_value=_mock_settings()),
+        patch(
+            "eval.run_oxford102.FileSpeciesCatalog",
+            return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
+        ),
+    ):
+        exit_code = run_eval(
+            _sample_args(output=output_path, backend="vlm-cloud", plantnet_baseline=False)
+        )
+
+    assert exit_code == 0
+    import json
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["inference"]["usage"]["total_tokens"] == 1500
+    assert payload["observations"][0]["prompt_tokens"] == 900
 
 
 def test_run_eval_writes_report_when_plantnet_disabled(tmp_path: Path) -> None:

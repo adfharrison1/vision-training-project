@@ -73,6 +73,7 @@ def test_yellow16_manifest_has_sixteen_rows_with_ten_yellow_species() -> None:
 def test_validate_manifest_rejects_species_image_mismatch() -> None:
     from eval.dataset import default_dataset_root, load_oxford_splits, split_image_indices
     from eval.profile_manifest import ProfileObservationSpec, validate_manifest_against_dataset
+
     from plant_id.infrastructure.config.settings import Settings
     from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
 
