@@ -1,0 +1,24 @@
+# Stability probe: english marigold (image_05147.jpg), 10 identical observations.
+# Run: uv run python -m eval.run_oxford102 --profile english_marigold_repeat10 --backend vlm-cloud
+
+observations:
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: english marigold
+    image: image_05147.jpg

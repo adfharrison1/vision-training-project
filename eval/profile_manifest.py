@@ -18,6 +18,8 @@ PROFILE_OBSERVATION_COUNTS = {
     "quick": 8,
     "mixed16": 16,
     "yellow16": 16,
+    "primula_repeat10": 10,
+    "english_marigold_repeat10": 10,
 }
 
 PROFILE_MANIFEST_FILES = {
@@ -25,6 +27,8 @@ PROFILE_MANIFEST_FILES = {
     "quick": "quick.yaml",
     "mixed16": "mixed16.yaml",
     "yellow16": "yellow16.yaml",
+    "primula_repeat10": "primula_repeat10.yaml",
+    "english_marigold_repeat10": "english_marigold_repeat10.yaml",
 }
 
 

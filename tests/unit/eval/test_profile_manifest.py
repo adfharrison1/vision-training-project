@@ -70,6 +70,24 @@ def test_yellow16_manifest_has_sixteen_rows_with_ten_yellow_species() -> None:
     assert yellow16[8].image_name == "image_03641.jpg"
 
 
+def test_primula_repeat10_manifest_has_ten_rows() -> None:
+    manifest = load_profile_manifest(Path("eval/profiles/primula_repeat10.yaml"))
+    rows = select_manifest_observations(manifest, "primula_repeat10")
+
+    assert len(rows) == 10
+    assert all(row.species == "primula" for row in rows)
+    assert all(row.image_name == "image_03641.jpg" for row in rows)
+
+
+def test_english_marigold_repeat10_manifest_has_ten_rows() -> None:
+    manifest = load_profile_manifest(Path("eval/profiles/english_marigold_repeat10.yaml"))
+    rows = select_manifest_observations(manifest, "english_marigold_repeat10")
+
+    assert len(rows) == 10
+    assert all(row.species == "english marigold" for row in rows)
+    assert all(row.image_name == "image_05147.jpg" for row in rows)
+
+
 def test_validate_manifest_rejects_species_image_mismatch() -> None:
     from eval.dataset import default_dataset_root, load_oxford_splits, split_image_indices
     from eval.profile_manifest import ProfileObservationSpec, validate_manifest_against_dataset
