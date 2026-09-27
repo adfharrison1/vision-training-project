@@ -23,6 +23,8 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `quick` | 8 | All 8 rows from `eval/profiles/quick.yaml` — one fixed image per species |
 | `mixed16` | 16 | All rows from `eval/profiles/mixed16.yaml` — 2 regression images + 14 fresh species |
 | `yellow16` | 16 | All rows from `eval/profiles/yellow16.yaml` — 10 yellow-forward species + 6 contrast rows |
+| `primula_repeat10` | 10 | `eval/profiles/primula_repeat10.yaml` — `image_03641.jpg` × 10 |
+| `english_marigold_repeat10` | 10 | `eval/profiles/english_marigold_repeat10.yaml` — `image_05147.jpg` × 10 |
 | `full` | 6,149 | All test-split images |
 
 **Profile manifest:** edit `eval/profiles/quick.yaml` to change `species` and `image` independently per row. Ground truth is validated against `imagelabels.mat` on load. Override with `--profile-manifest /path/to.yaml`.
@@ -31,7 +33,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, or `full` |
+| `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, `primula_repeat10`, `english_marigold_repeat10`, or `full` |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
 | `--backend` | `vlm-cloud` | Composition backend (`vlm`, `vlm-cloud`, `classical`); use `--backend vlm` for local Ollama |
 | `--think` / `--no-think` | `false` (or `PLANT_ID_OLLAMA_THINK`) | Enable Ollama thinking mode for this eval run |
@@ -58,6 +60,7 @@ Eval defaults to **`vlm-cloud`** (OpenAI-compatible hosted inference). Configure
 - `PLANT_ID_VLM_CLOUD_API_KEY` (canonical; you may `export PLANT_ID_VLM_CLOUD_API_KEY="$FIREWORKS_API_KEY"`)
 - `PLANT_ID_VLM_CLOUD_BASE_URL` (default Fireworks: `https://api.fireworks.ai/inference/v1`)
 - `PLANT_ID_VLM_CLOUD_MODEL` (example: `accounts/fireworks/models/qwen3-vl-8b-instruct`)
+- `PLANT_ID_VLM_CLOUD_REASONING_EFFORT` (default `none` — disables Fireworks DeepSeek thinking; set `high` etc. to re-enable)
 
 Local parity runs: `--backend vlm` (requires Ollama). Verify cloud settings: `uv run plant-id verify-env --backend vlm-cloud`.
 

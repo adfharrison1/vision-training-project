@@ -74,6 +74,38 @@ def test_vlm_cloud_identify_parses_valid_response(tmp_path: Path) -> None:
     assert result.model_tag == "accounts/fireworks/models/qwen3-vl-8b-instruct"
     assert raw["request"]["model"] == "accounts/fireworks/models/qwen3-vl-8b-instruct"
     client.chat.completions.create.assert_called_once()
+    assert client.chat.completions.create.call_args.kwargs["reasoning_effort"] == "none"
+
+
+def test_vlm_cloud_omits_reasoning_effort_when_unset(tmp_path: Path) -> None:
+    photo = tmp_path / "flower.jpg"
+    photo.write_bytes(b"fake")
+    message = MagicMock()
+    message.content = json.dumps(
+        {
+            "predictions": [
+                {
+                    "rank": 1,
+                    "species_label": "tiger lily",
+                    "evidence": "x",
+                    "confidence": 0.9,
+                }
+            ]
+        }
+    )
+    choice = MagicMock()
+    choice.message = message
+    response = MagicMock()
+    response.choices = [choice]
+    response.model_dump.return_value = {}
+
+    client = MagicMock()
+    client.chat.completions.create.return_value = response
+    repo = _repo(_settings(vlm_cloud_reasoning_effort=None), client=client)
+    observation = Observation(observation_id="obs-cloud", photo_paths=[photo])
+    repo.identify(observation)
+
+    assert "reasoning_effort" not in client.chat.completions.create.call_args.kwargs
 
 
 def test_vlm_cloud_identify_rejects_invalid_json(tmp_path: Path) -> None:

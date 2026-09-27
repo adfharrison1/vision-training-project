@@ -60,6 +60,7 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | `VLM_CLOUD_BASE_URL` | Fireworks inference URL | OpenAI-compatible base URL |
 | `VLM_CLOUD_MODEL` | `accounts/fireworks/models/qwen3-vl-8b-instruct` | Cloud model id |
 | `VLM_CLOUD_VENDOR` | unset | Optional label for traces/reports (e.g. `fireworks`) |
+| `VLM_CLOUD_REASONING_EFFORT` | `none` | Fireworks/OpenAI `reasoning_effort` (`none` disables thinking; omit env to use provider default) |
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |
 | `ARTIFACTS_DIR` | `artifacts/` | Where run JSON files are written |

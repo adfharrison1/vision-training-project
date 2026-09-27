@@ -119,6 +119,14 @@ class Settings(BaseSettings):
         default=None,
         description="Optional label for traces and eval reports (e.g. fireworks).",
     )
+    vlm_cloud_reasoning_effort: str | None = Field(
+        default="none",
+        description=(
+            "OpenAI-compatible reasoning_effort for chat completions (Fireworks DeepSeek V4 "
+            "defaults to high thinking when omitted). Use 'none' to disable reasoning tokens; "
+            "low/medium/high/max enable thinking. Set empty env var to omit and use provider default."
+        ),
+    )
 
 
 @lru_cache

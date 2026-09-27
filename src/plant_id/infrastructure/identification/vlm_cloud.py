@@ -141,6 +141,7 @@ class VlmCloudIdentificationRepository:
                 "prompt_version": self._settings.prompt_version,
                 "photo_paths": image_paths,
                 "temperature": 0,
+                "reasoning_effort": self._settings.vlm_cloud_reasoning_effort,
                 "base_url_host": urlparse(self._settings.vlm_cloud_base_url).netloc,
             },
             "response": response.model_dump(mode="json"),
@@ -188,11 +189,15 @@ class VlmCloudIdentificationRepository:
 
     def _chat(self, content_parts: list[dict[str, Any]]) -> Any:
         def _create() -> Any:
-            return self._openai_client().chat.completions.create(
-                model=self._settings.vlm_cloud_model,
-                messages=[{"role": "user", "content": content_parts}],
-                temperature=0,
-            )
+            kwargs: dict[str, Any] = {
+                "model": self._settings.vlm_cloud_model,
+                "messages": [{"role": "user", "content": content_parts}],
+                "temperature": 0,
+            }
+            effort = self._settings.vlm_cloud_reasoning_effort
+            if effort is not None and effort.strip():
+                kwargs["reasoning_effort"] = effort.strip()
+            return self._openai_client().chat.completions.create(**kwargs)
 
         return call_openai_chat_traced(
             self._settings,

@@ -64,6 +64,7 @@ def test_settings_vlm_cloud_defaults_and_env(monkeypatch) -> None:
     monkeypatch.delenv("PLANT_ID_VLM_CLOUD_MODEL", raising=False)
     monkeypatch.delenv("PLANT_ID_VLM_CLOUD_VENDOR", raising=False)
     monkeypatch.delenv("PLANT_ID_VLM_CLOUD_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("PLANT_ID_VLM_CLOUD_REASONING_EFFORT", raising=False)
 
     settings = Settings()
     assert settings.vlm_cloud_api_key is None
@@ -71,12 +72,14 @@ def test_settings_vlm_cloud_defaults_and_env(monkeypatch) -> None:
     assert settings.vlm_cloud_model == "accounts/fireworks/models/qwen3-vl-8b-instruct"
     assert settings.vlm_cloud_timeout_seconds == 120.0
     assert settings.vlm_cloud_vendor is None
+    assert settings.vlm_cloud_reasoning_effort == "none"
 
     monkeypatch.setenv("PLANT_ID_VLM_CLOUD_API_KEY", "cloud-key")
     monkeypatch.setenv("PLANT_ID_VLM_CLOUD_BASE_URL", "https://custom.example/v1")
     monkeypatch.setenv("PLANT_ID_VLM_CLOUD_MODEL", "custom-model")
     monkeypatch.setenv("PLANT_ID_VLM_CLOUD_VENDOR", "fireworks")
     monkeypatch.setenv("PLANT_ID_VLM_CLOUD_TIMEOUT_SECONDS", "90")
+    monkeypatch.setenv("PLANT_ID_VLM_CLOUD_REASONING_EFFORT", "high")
 
     settings = Settings()
     assert settings.vlm_cloud_api_key == "cloud-key"
@@ -84,3 +87,4 @@ def test_settings_vlm_cloud_defaults_and_env(monkeypatch) -> None:
     assert settings.vlm_cloud_model == "custom-model"
     assert settings.vlm_cloud_vendor == "fireworks"
     assert settings.vlm_cloud_timeout_seconds == 90.0
+    assert settings.vlm_cloud_reasoning_effort == "high"
