@@ -64,8 +64,9 @@ def test_use_case_returns_identification_result() -> None:
 
     result = use_case.execute(observation)
 
-    assert result.observation_id == "obs-1"
-    assert result.predictions[0].species_label == "pink primrose"
+    assert result.result.observation_id == "obs-1"
+    assert result.result.predictions[0].species_label == "pink primrose"
+    assert result.raw == {"fake": True}
 
 
 def test_use_case_calls_identify_before_persist() -> None:

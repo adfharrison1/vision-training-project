@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation, ObservationResult
 from plant_id.domain.repositories import ArtifactRepository, IdentificationRepository
+
+
+@dataclass(frozen=True)
+class IdentifyPlantResult:
+    result: ObservationResult
+    raw: dict
 
 
 class IdentifyPlantUseCase:
@@ -18,7 +26,7 @@ class IdentifyPlantUseCase:
         self._identification_repo = identification_repo
         self._artifact_repo = artifact_repo
 
-    def execute(self, observation: Observation) -> ObservationResult:
+    def execute(self, observation: Observation) -> IdentifyPlantResult:
         raw: dict = {}
         try:
             result, raw = self._identification_repo.identify(observation)
@@ -47,4 +55,4 @@ class IdentifyPlantUseCase:
             result=result,
             error=None,
         )
-        return result
+        return IdentifyPlantResult(result=result, raw=raw)
