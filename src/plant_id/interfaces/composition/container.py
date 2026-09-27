@@ -7,12 +7,17 @@ from typing import Literal
 from plant_id.application.use_cases.identify_plant import IdentifyPlantUseCase
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.identification.classical_ml import ClassicalMlIdentificationRepository
+from plant_id.infrastructure.identification.vlm_cloud import VlmCloudIdentificationRepository
 from plant_id.infrastructure.identification.vlm_ollama import VlmOllamaIdentificationRepository
-from plant_id.infrastructure.ollama.environment import VerifyEnvResult, verify_environment
+from plant_id.infrastructure.ollama.environment import (
+    VerifyEnvResult,
+    verify_cloud_vlm_environment,
+    verify_environment,
+)
 from plant_id.infrastructure.persistence.file_artifacts import FileArtifactRepository
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
 
-Backend = Literal["vlm", "classical"]
+Backend = Literal["vlm", "vlm-cloud", "classical"]
 
 
 def load_settings() -> Settings:
@@ -42,6 +47,8 @@ def build_identify_use_case(
 
     if backend == "vlm":
         identification_repo = VlmOllamaIdentificationRepository(settings, species_catalog)
+    elif backend == "vlm-cloud":
+        identification_repo = VlmCloudIdentificationRepository(settings, species_catalog)
     elif backend == "classical":
         identification_repo = ClassicalMlIdentificationRepository(settings, species_catalog)
     else:
@@ -59,5 +66,6 @@ __all__ = [
     "build_identify_use_case",
     "load_settings",
     "resolve_settings",
+    "verify_cloud_vlm_environment",
     "verify_environment",
 ]

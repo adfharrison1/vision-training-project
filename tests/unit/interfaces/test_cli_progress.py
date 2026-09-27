@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from plant_id.application.use_cases.identify_plant import IdentifyPlantResult
 from plant_id.domain.models import ObservationResult, Prediction
 from plant_id.interfaces.cli.presentation import identify_with_cli_presentation
 
@@ -25,7 +26,10 @@ def test_identify_with_cli_presentation_writes_stages(
     mock_build: MagicMock,
     capsys,
 ) -> None:
-    mock_build.return_value.execute.return_value = _sample_result()
+    mock_build.return_value.execute.return_value = IdentifyPlantResult(
+        result=_sample_result(),
+        raw={},
+    )
 
     outcome = identify_with_cli_presentation(
         "vlm",
@@ -45,7 +49,10 @@ def test_identify_with_cli_presentation_quiet_is_silent(
     mock_build: MagicMock,
     capsys,
 ) -> None:
-    mock_build.return_value.execute.return_value = _sample_result()
+    mock_build.return_value.execute.return_value = IdentifyPlantResult(
+        result=_sample_result(),
+        raw={},
+    )
 
     identify_with_cli_presentation(
         "vlm",

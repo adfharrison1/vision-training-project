@@ -105,3 +105,39 @@ def verify_environment(settings: Settings | None = None) -> VerifyEnvResult:
     messages.append(f"Vision model '{settings.vision_model}' is available.")
     messages.append("Environment is ready for local plant identification.")
     return VerifyEnvResult(ok=True, messages=tuple(messages))
+
+
+def verify_cloud_vlm_environment(settings: Settings | None = None) -> VerifyEnvResult:
+    settings = settings or Settings()
+    messages: list[str] = []
+
+    if not settings.vlm_cloud_api_key:
+        return VerifyEnvResult(
+            ok=False,
+            messages=(
+                "PLANT_ID_VLM_CLOUD_API_KEY is not set.",
+                "Set it to your OpenAI-compatible inference API key (see README).",
+            ),
+        )
+
+    if not settings.vlm_cloud_base_url.strip():
+        return VerifyEnvResult(
+            ok=False,
+            messages=("PLANT_ID_VLM_CLOUD_BASE_URL must not be empty.",),
+        )
+
+    if not settings.vlm_cloud_model.strip():
+        return VerifyEnvResult(
+            ok=False,
+            messages=("PLANT_ID_VLM_CLOUD_MODEL must not be empty.",),
+        )
+
+    from urllib.parse import urlparse
+
+    host = urlparse(settings.vlm_cloud_base_url).netloc
+    messages.append(f"Cloud VLM base URL host: {host or settings.vlm_cloud_base_url}")
+    messages.append(f"Cloud VLM model: {settings.vlm_cloud_model}")
+    if settings.vlm_cloud_vendor:
+        messages.append(f"Cloud vendor label: {settings.vlm_cloud_vendor}")
+    messages.append("Cloud VLM settings are configured for backend vlm-cloud.")
+    return VerifyEnvResult(ok=True, messages=tuple(messages))

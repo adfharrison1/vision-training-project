@@ -24,6 +24,7 @@ class IdentifyRunResult:
     exit_code: int
     error_message: str | None = None
     result: ObservationResult | None = None
+    identification_raw: dict | None = None
 
     @property
     def output_json(self) -> str | None:
@@ -54,10 +55,18 @@ def execute_identify(
     def run() -> IdentifyRunResult:
         use_case = build_identify_use_case(backend, settings)
         try:
-            result = use_case.execute(observation)
+            outcome = use_case.execute(observation)
         except IdentificationError as exc:
-            return IdentifyRunResult(exit_code=1, error_message=str(exc))
-        return IdentifyRunResult(exit_code=0, result=result)
+            return IdentifyRunResult(
+                exit_code=1,
+                error_message=str(exc),
+                identification_raw=exc.raw or None,
+            )
+        return IdentifyRunResult(
+            exit_code=0,
+            result=outcome.result,
+            identification_raw=outcome.raw,
+        )
 
     if event_handler is None:
         return run()

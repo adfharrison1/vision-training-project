@@ -14,7 +14,7 @@ from plant_id.interfaces.composition import Backend
 def _add_backend_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--backend",
-        choices=("vlm", "classical"),
+        choices=("vlm", "vlm-cloud", "classical"),
         default="vlm",
         help="Identification backend (default: vlm).",
     )
@@ -47,9 +47,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser(
+    verify_parser = subparsers.add_parser(
         "verify-env",
-        help="Verify Ollama is running and the configured vision model is installed.",
+        help="Verify environment for the selected identification backend.",
+    )
+    verify_parser.add_argument(
+        "--backend",
+        choices=("vlm", "vlm-cloud"),
+        default="vlm",
+        help="Backend to verify (default: vlm checks local Ollama).",
     )
 
     identify_parser = subparsers.add_parser(
@@ -85,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "verify-env":
-        return run_verify_env()
+        return run_verify_env(backend=args.backend)
 
     backend: Backend = args.backend
 

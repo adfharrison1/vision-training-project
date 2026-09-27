@@ -122,3 +122,11 @@ def test_cli_identify_think_flag_parsed() -> None:
     assert args.think is False
     args = parser.parse_args(["identify", "--photos", "a.jpg"])
     assert args.think is None
+
+
+def test_cli_backend_choices_include_vlm_cloud() -> None:
+    from plant_id.interfaces.cli.main import build_parser
+
+    parser = build_parser()
+    args = parser.parse_args(["identify", "--photos", "a.jpg", "--backend", "vlm-cloud"])
+    assert args.backend == "vlm-cloud"
