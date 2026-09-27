@@ -2,7 +2,7 @@
 
 Identify flowering plants from photographs using a local vision-language model. Given 1–3 photos of one plant, the CLI returns ranked species predictions as JSON and saves a run record under `artifacts/`.
 
-Inference runs on your machine via Ollama. No cloud or third-party identification APIs are used at runtime.
+Inference defaults to **local Ollama** for `plant-id identify` / `demo`. Optional **`vlm-cloud`** backend uses your own OpenAI-compatible endpoint (Fireworks documented in `.env.example`). Pl@ntNet and similar plant-ID APIs remain **eval-only** comparators, not runtime backends.
 
 ## Quick start
 
@@ -39,8 +39,10 @@ Add `--quiet` to hide progress on stderr. Results go to stdout; artifacts to `ar
 | Command | Purpose |
 |---|---|
 | `plant-id verify-env` | Check Ollama is up and the vision model is installed |
-| `plant-id demo --backend vlm` | Identify the bundled sample image |
-| `plant-id identify --backend vlm --photos a.jpg` | Identify 1–3 comma-separated photo paths |
+| `plant-id verify-env --backend vlm-cloud` | Check cloud VLM env vars are set |
+| `plant-id demo --backend vlm` | Identify the bundled sample image (local Ollama) |
+| `plant-id identify --backend vlm --photos a.jpg` | Identify 1–3 comma-separated photo paths (local) |
+| `plant-id identify --backend vlm-cloud --photos a.jpg` | Same via configured cloud VLM endpoint |
 | `plant-id identify --backend vlm --photos a.jpg --think` | Same, with Ollama thinking mode enabled for this run |
 | `plant-id identify --backend classical …` | Stub — not implemented yet |
 
@@ -54,6 +56,10 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | `OLLAMA_THINK` | `false` | Enable qwen3 thinking mode on identify (use `--think` per run to override) |
 | `OLLAMA_CONTENT_RETRY_ENABLED` | `true` | Retry once when content is empty but JSON is in thinking, or response is wholly empty |
 | `VISION_MODEL` | `qwen3-vl:2b` | Ollama vision model tag (use `qwen3-vl:8b` for accuracy comparison) |
+| `VLM_CLOUD_API_KEY` | unset | Cloud VLM API key (backend `vlm-cloud`; canonical name only) |
+| `VLM_CLOUD_BASE_URL` | Fireworks inference URL | OpenAI-compatible base URL |
+| `VLM_CLOUD_MODEL` | `accounts/fireworks/models/qwen3-vl-8b-instruct` | Cloud model id |
+| `VLM_CLOUD_VENDOR` | unset | Optional label for traces/reports (e.g. `fireworks`) |
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |
 | `ARTIFACTS_DIR` | `artifacts/` | Where run JSON files are written |

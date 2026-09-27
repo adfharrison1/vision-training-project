@@ -1,12 +1,13 @@
 # Agent guide — UK Plant Identification
 
-Learning project: identify flowering plants from 1–3 photos using a **local Ollama VLM**. Runtime is local-only (no Pl@ntNet or cloud ID APIs). See `README.md` for human-oriented setup detail.
+Learning project: identify flowering plants from 1–3 photos using a **local Ollama VLM** by default, or optional **`vlm-cloud`** (OpenAI-compatible hosted inference). Pl@ntNet and similar plant-ID APIs stay eval-only. See `README.md` for setup.
 
 ## Quick verify (run after code changes)
 
 ```bash
 uv sync
-uv run plant-id verify-env          # needs Ollama + qwen3-vl:2b (default)
+uv run plant-id verify-env          # Ollama + qwen3-vl:2b (backend vlm)
+uv run plant-id verify-env --backend vlm-cloud  # cloud env vars only
 uv run ruff check .
 uv run lint-imports
 uv run pytest                       # unit; skips integration without Ollama/sample
@@ -30,11 +31,11 @@ When the model returns empty `content` but valid JSON in `thinking`, or a wholly
 
 Ground truth eval (not runtime): `uv run python -m eval.check_ground_truth data/flowers/jpg/image_00018.jpg --identify`
 
-**Oxford 102 eval profiles** (needs `data/flowers/` with `setid.mat`):
+**Oxford 102 eval profiles** (needs `data/flowers/` with `setid.mat`; default backend **`vlm-cloud`**, set `PLANT_ID_VLM_CLOUD_*`):
 
 ```bash
-uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check   # 4 images (~14 min on 2b)
-uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline              # quick: 8 images (~30 min)
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check   # 4 images
+uv run python -m eval.run_oxford102 --backend vlm --eval-run-id local-smoke      # local Ollama parity
 ```
 
 Improvement loop: run eval → read `artifacts/eval/*.json` failures → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
@@ -76,7 +77,7 @@ Run `uv run lint-imports` after changing imports.
 
 Defined in `src/plant_id/domain/repositories.py`:
 
-- **`IdentificationRepository`** — `identify(observation) -> (ObservationResult, raw dict)`; swappable backends (`vlm`, `classical` stub)
+- **`IdentificationRepository`** — `identify(observation) -> (ObservationResult, raw dict)`; backends: `vlm` (Ollama), `vlm-cloud` (OpenAI-compatible API), `classical` stub
 - **`ArtifactRepository`** — persist run JSON under `artifacts/`
 - **`SpeciesCatalogRepository`** — closed-set label list for prompts
 
@@ -102,7 +103,7 @@ Domain port in `domain/application_events.py`. Infrastructure emits `log_stage` 
 
 ## Observability (optional, local-only)
 
-Self-hosted [Opik](https://www.comet.com/docs/opik/self-host/local_deployment) traces Ollama VLM calls from `infrastructure/observability/`. **Default off.** No Comet cloud — do not set `OPIK_API_KEY`.
+Self-hosted [Opik](https://www.comet.com/docs/opik/self-host/local_deployment) traces VLM calls (Ollama and cloud) from `infrastructure/observability/`. **Default off.** No Comet cloud — do not set `OPIK_API_KEY`.
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"   # fresh terminals may need this for uv
