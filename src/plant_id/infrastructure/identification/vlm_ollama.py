@@ -10,43 +10,16 @@ from ollama import Client
 
 from plant_id.domain.application_events import log_stage, log_wait
 from plant_id.domain.exceptions import IdentificationError
-from plant_id.domain.models import Observation, ObservationResult, Prediction
+from plant_id.domain.models import Observation, ObservationResult
 from plant_id.domain.repositories import SpeciesCatalogRepository
 from plant_id.infrastructure.config.settings import Settings
+from plant_id.infrastructure.identification.vlm_common import build_vlm_prompt, parse_vlm_result
 from plant_id.infrastructure.observability.opik_tracing import (
     call_ollama_chat_traced,
     identify_trace,
     record_content_retry,
     record_identify_outcome,
 )
-
-PROMPT_TEMPLATE = """Identify the flowering plant in the photograph(s).
-
-Return ONLY valid JSON: root object MUST be {{"predictions": [{{...}}, ...]}} — \
-never a bare prediction object at the root.
-Example shape:
-{{
-  "predictions": [
-    {{
-      "rank": 1,
-      "species_label": "<exact class name>",
-      "evidence": "<brief visual evidence>",
-      "confidence": 0.0
-    }}
-  ]
-}}
-
-Rules:
-- Provide 1 to 3 predictions ranked by confidence.
-- species_label MUST match one allowed class name exactly (case and spelling).
-- Prefer the most specific allowed name when several overlap in meaning.
-- If two or more allowed names fit, list up to 3 distinct species_label values.
-- confidence is a number from 0.0 to 1.0 for each prediction.
-- Put only the JSON object in your reply — no markdown, commentary, or long reasoning.
-
-Allowed class names:
-{class_names}
-"""
 
 CONTENT_RETRY_SUFFIX = (
     "Your previous response had empty content. Return ONLY the JSON object in the "
@@ -98,7 +71,7 @@ class VlmOllamaIdentificationRepository:
         log_stage(1, 4, f"Validated {photo_count} photo(s)")
 
         label_count = len(self._species_catalog.list_class_names())
-        prompt = self._build_prompt()
+        prompt = build_vlm_prompt(self._species_catalog)
         log_stage(2, 4, f"Built prompt ({label_count} species labels)")
 
         ollama_message = (
@@ -137,7 +110,13 @@ class VlmOllamaIdentificationRepository:
 
         try:
             parsed = json.loads(content)
-            result = self._parse_result(observation, parsed)
+            result = parse_vlm_result(
+                observation,
+                parsed,
+                settings=self._settings,
+                species_catalog=self._species_catalog,
+                model_tag=self._settings.vision_model,
+            )
         except (json.JSONDecodeError, ValueError, IdentificationError) as exc:
             message = (
                 f"Invalid model JSON for observation {observation.observation_id}: {exc}"
@@ -281,58 +260,3 @@ class VlmOllamaIdentificationRepository:
         if thinking.startswith("{") or thinking.startswith("["):
             return thinking
         return ""
-
-    def _build_prompt(self) -> str:
-        class_names = "\n".join(f"- {name}" for name in self._species_catalog.list_class_names())
-        return PROMPT_TEMPLATE.format(class_names=class_names)
-
-    def _parse_result(self, observation: Observation, payload: Any) -> ObservationResult:
-        if not isinstance(payload, dict):
-            raise IdentificationError("Model JSON must be an object.")
-
-        raw_predictions = payload.get("predictions")
-        if not isinstance(raw_predictions, list) or not raw_predictions:
-            raise IdentificationError("Model JSON must include a non-empty predictions list.")
-
-        allowed = set(self._species_catalog.list_class_names())
-        predictions: list[Prediction] = []
-        for item in raw_predictions[:3]:
-            if not isinstance(item, dict):
-                raise IdentificationError("Each prediction must be an object.")
-            species_label = item.get("species_label")
-            evidence = item.get("evidence")
-            rank = item.get("rank")
-            confidence = item.get("confidence")
-            if not isinstance(species_label, str) or not species_label.strip():
-                raise IdentificationError("Each prediction requires species_label.")
-            if species_label not in allowed:
-                raise IdentificationError(f"Unknown species_label: {species_label}")
-            if not isinstance(evidence, str) or not evidence.strip():
-                raise IdentificationError("Each prediction requires evidence.")
-            if not isinstance(rank, int):
-                raise IdentificationError("Each prediction requires integer rank.")
-            parsed_confidence = None
-            if confidence is not None:
-                if not isinstance(confidence, (int, float)):
-                    raise IdentificationError("Prediction confidence must be numeric.")
-                parsed_confidence = float(confidence)
-            predictions.append(
-                Prediction(
-                    rank=rank,
-                    species_label=species_label,
-                    evidence=evidence.strip(),
-                    confidence=parsed_confidence,
-                )
-            )
-
-        predictions.sort(key=lambda prediction: prediction.rank)
-        top_confidence = predictions[0].confidence
-        uncertain = top_confidence is None or top_confidence < self._settings.uncertainty_threshold
-
-        return ObservationResult(
-            observation_id=observation.observation_id,
-            predictions=tuple(predictions),
-            model_tag=self._settings.vision_model,
-            prompt_version=self._settings.prompt_version,
-            uncertain=uncertain,
-        )

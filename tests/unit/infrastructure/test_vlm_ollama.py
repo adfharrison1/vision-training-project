@@ -8,6 +8,7 @@ from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.identification.classical_ml import ClassicalMlIdentificationRepository
+from plant_id.infrastructure.identification.vlm_common import parse_vlm_result
 from plant_id.infrastructure.identification.vlm_ollama import (
     CONTENT_RETRY_SUFFIX,
     VlmOllamaIdentificationRepository,
@@ -50,7 +51,6 @@ def test_vlm_parse_result_marks_uncertain_when_confidence_low(
     settings: Settings,
     catalog: FileSpeciesCatalog,
 ) -> None:
-    repo = VlmOllamaIdentificationRepository(settings, catalog, client=MagicMock())
     observation = Observation(observation_id="obs-1", photo_paths=[Path("a.jpg")])
     payload = {
         "predictions": [
@@ -63,7 +63,13 @@ def test_vlm_parse_result_marks_uncertain_when_confidence_low(
         ]
     }
 
-    result = repo._parse_result(observation, payload)
+    result = parse_vlm_result(
+        observation,
+        payload,
+        settings=settings,
+        species_catalog=catalog,
+        model_tag=settings.vision_model,
+    )
 
     assert result.uncertain is True
     assert result.predictions[0].species_label == "pink primrose"
@@ -73,11 +79,10 @@ def test_vlm_parse_result_rejects_unknown_label(
     settings: Settings,
     catalog: FileSpeciesCatalog,
 ) -> None:
-    repo = VlmOllamaIdentificationRepository(settings, catalog, client=MagicMock())
     observation = Observation(observation_id="obs-2", photo_paths=[Path("a.jpg")])
 
     with pytest.raises(IdentificationError, match="Unknown species_label"):
-        repo._parse_result(
+        parse_vlm_result(
             observation,
             {
                 "predictions": [
@@ -89,6 +94,9 @@ def test_vlm_parse_result_rejects_unknown_label(
                     }
                 ]
             },
+            settings=settings,
+            species_catalog=catalog,
+            model_tag=settings.vision_model,
         )
 
 

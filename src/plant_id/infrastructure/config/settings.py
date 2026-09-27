@@ -95,6 +95,30 @@ class Settings(BaseSettings):
         default="plant-id",
         description="Opik project name for identification traces.",
     )
+    vlm_cloud_api_key: str | None = Field(
+        default=None,
+        description=(
+            "API key for OpenAI-compatible cloud VLM inference (backend vlm-cloud). "
+            "Read only from PLANT_ID_VLM_CLOUD_API_KEY."
+        ),
+    )
+    vlm_cloud_base_url: str = Field(
+        default="https://api.fireworks.ai/inference/v1",
+        description="OpenAI-compatible base URL for cloud VLM chat completions.",
+    )
+    vlm_cloud_model: str = Field(
+        default="accounts/fireworks/models/qwen3-vl-8b-instruct",
+        description="Model identifier on the configured cloud VLM endpoint.",
+    )
+    vlm_cloud_timeout_seconds: float = Field(
+        default=120.0,
+        gt=0,
+        description="Maximum seconds to wait for a single cloud VLM chat completion.",
+    )
+    vlm_cloud_vendor: str | None = Field(
+        default=None,
+        description="Optional label for traces and eval reports (e.g. fireworks).",
+    )
 
 
 @lru_cache

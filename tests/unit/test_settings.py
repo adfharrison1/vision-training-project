@@ -56,3 +56,31 @@ def test_settings_ollama_content_retry_from_environment(monkeypatch) -> None:
 
     monkeypatch.setenv("PLANT_ID_OLLAMA_CONTENT_RETRY_ENABLED", "false")
     assert Settings().ollama_content_retry_enabled is False
+
+
+def test_settings_vlm_cloud_defaults_and_env(monkeypatch) -> None:
+    monkeypatch.delenv("PLANT_ID_VLM_CLOUD_API_KEY", raising=False)
+    monkeypatch.delenv("PLANT_ID_VLM_CLOUD_BASE_URL", raising=False)
+    monkeypatch.delenv("PLANT_ID_VLM_CLOUD_MODEL", raising=False)
+    monkeypatch.delenv("PLANT_ID_VLM_CLOUD_VENDOR", raising=False)
+    monkeypatch.delenv("PLANT_ID_VLM_CLOUD_TIMEOUT_SECONDS", raising=False)
+
+    settings = Settings()
+    assert settings.vlm_cloud_api_key is None
+    assert settings.vlm_cloud_base_url == "https://api.fireworks.ai/inference/v1"
+    assert settings.vlm_cloud_model == "accounts/fireworks/models/qwen3-vl-8b-instruct"
+    assert settings.vlm_cloud_timeout_seconds == 120.0
+    assert settings.vlm_cloud_vendor is None
+
+    monkeypatch.setenv("PLANT_ID_VLM_CLOUD_API_KEY", "cloud-key")
+    monkeypatch.setenv("PLANT_ID_VLM_CLOUD_BASE_URL", "https://custom.example/v1")
+    monkeypatch.setenv("PLANT_ID_VLM_CLOUD_MODEL", "custom-model")
+    monkeypatch.setenv("PLANT_ID_VLM_CLOUD_VENDOR", "fireworks")
+    monkeypatch.setenv("PLANT_ID_VLM_CLOUD_TIMEOUT_SECONDS", "90")
+
+    settings = Settings()
+    assert settings.vlm_cloud_api_key == "cloud-key"
+    assert settings.vlm_cloud_base_url == "https://custom.example/v1"
+    assert settings.vlm_cloud_model == "custom-model"
+    assert settings.vlm_cloud_vendor == "fireworks"
+    assert settings.vlm_cloud_timeout_seconds == 90.0
