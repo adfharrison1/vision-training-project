@@ -82,9 +82,13 @@ class Settings(BaseSettings):
         le=1.0,
         description="Top prediction confidence below this marks result as uncertain.",
     )
-    artifacts_dir: Path = Field(
-        default_factory=lambda: _project_root() / "artifacts",
-        description="Directory for persisted identification run JSON artifacts.",
+    identify_artifacts_dir: Path = Field(
+        default_factory=lambda: _project_root() / "identify_artifacts",
+        description="Directory for CLI identify/demo per-observation JSON artifacts.",
+    )
+    eval_runs_dir: Path = Field(
+        default_factory=lambda: _project_root() / "eval_runs",
+        description="Root directory for eval run bundles (manifest, report, grouped artifacts).",
     )
     prompt_version: str = Field(
         default="closed-set-v3",
@@ -131,7 +135,8 @@ class Settings(BaseSettings):
         description=(
             "OpenAI-compatible reasoning_effort for chat completions (Fireworks DeepSeek V4 "
             "defaults to high thinking when omitted). Use 'none' to disable reasoning tokens; "
-            "low/medium/high/max enable thinking. Set empty env var to omit and use provider default."
+            "low/medium/high/max enable thinking. Set empty env var to omit and "
+            "use provider default."
         ),
     )
 

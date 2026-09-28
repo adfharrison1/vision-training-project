@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 from plant_id.application.use_cases.identify_plant import IdentifyPlantUseCase
@@ -40,6 +41,8 @@ def resolve_settings(
 def build_identify_use_case(
     backend: Backend,
     settings: Settings | None = None,
+    *,
+    artifact_dir: Path | None = None,
 ) -> IdentifyPlantUseCase:
     """Build an identification use case for the requested backend."""
     settings = settings or load_settings()
@@ -54,7 +57,8 @@ def build_identify_use_case(
     else:
         raise ValueError(f"Unknown backend: {backend!r}")
 
-    artifact_repo = FileArtifactRepository(settings.artifacts_dir)
+    artifacts_root = artifact_dir or settings.identify_artifacts_dir
+    artifact_repo = FileArtifactRepository(artifacts_root)
     return IdentifyPlantUseCase(identification_repo, artifact_repo)
 
 

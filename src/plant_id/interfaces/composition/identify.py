@@ -39,6 +39,7 @@ def execute_identify(
     observation_id: str,
     settings: Settings | None = None,
     *,
+    artifact_dir: Path | None = None,
     event_handler: ApplicationEvents | None = None,
     session_header: str | None = None,
     session_footer: str | None = None,
@@ -53,7 +54,7 @@ def execute_identify(
         return IdentifyRunResult(exit_code=1, error_message=str(exc))
 
     def run() -> IdentifyRunResult:
-        use_case = build_identify_use_case(backend, settings)
+        use_case = build_identify_use_case(backend, settings, artifact_dir=artifact_dir)
         try:
             outcome = use_case.execute(observation)
         except IdentificationError as exc:
