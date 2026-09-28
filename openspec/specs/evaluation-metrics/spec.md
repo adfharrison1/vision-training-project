@@ -65,7 +65,7 @@ The eval runner SHALL persist a structured report summarising aggregate and per-
 #### Scenario: Report written after run
 
 - **WHEN** an eval run completes successfully
-- **THEN** the system SHALL write a JSON report under `artifacts/eval/` including `eval_run_id`, profile name, model tag, backend id, split name, observation count, total duration, top-1 accuracy, top-3 accuracy, and per-class breakdown
+- **THEN** the system SHALL write a JSON report to `eval_runs/<eval_run_id>/eval/report.json` including `eval_run_id`, `run_purpose`, profile name, model tag, backend id, split name, observation count, total duration, top-1 accuracy, top-3 accuracy, per-class breakdown, and split accuracy fields when computed
 
 #### Scenario: Per-observation detail
 

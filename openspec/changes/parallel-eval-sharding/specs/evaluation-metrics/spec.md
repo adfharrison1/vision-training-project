@@ -27,7 +27,7 @@ The eval runner SHALL support an opt-in mode that executes observations concurre
 #### Scenario: Merged report shape unchanged
 
 - **WHEN** a sharded eval run completes (successfully or with per-observation failures)
-- **THEN** the runner SHALL write exactly one JSON report under `artifacts/eval/` using the existing report schema (same top-level fields and observation row shape as non-sharded runs)
+- **THEN** the runner SHALL write exactly one JSON report to `eval_runs/<eval_run_id>/eval/report.json` using the existing report schema (same observation row shape as non-sharded runs; MAY include `run_purpose` and `git_commit`)
 
 #### Scenario: Observation order preserved
 

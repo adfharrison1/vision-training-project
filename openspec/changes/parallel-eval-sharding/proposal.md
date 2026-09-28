@@ -7,7 +7,7 @@ Oxford eval runs are sequential and wall-clock bound (~2–3 min/image on `qwen3
 - Add an **opt-in** eval-runner mode that shards observations across multiple Ollama host URLs within **one** `run_oxford102` invocation (default remains **1 worker** on `PLANT_ID_OLLAMA_HOST` — current behaviour unchanged).
 - Introduce CLI flags / env for **worker count** and **host list** (e.g. `--workers 2` and `--ollama-hosts http://127.0.0.1:11434,http://127.0.0.1:11435`).
 - Run shard workers concurrently; assign observations deterministically (stable manifest order preserved in output).
-- **Merge shard results in-process** and write **one** JSON report under `artifacts/eval/` using the existing `EvalReport` schema (same fields and shape as today).
+- **Merge shard results in-process** and write **one** JSON report to `eval_runs/{eval_run_id}/eval/report.json` using the existing `EvalReport` schema (same observation row shape; may include `run_purpose` and `git_commit` from eval-run-layout).
 - Keep Opik tracing **optional and independent**: when `PLANT_ID_OPIK_ENABLED=true`, each sharded observation still traces with the same `eval_run_id` metadata; when off, sharded runs work identically except `trace_id` is absent.
 - When tracing is enabled during an eval run, set Opik **`thread_id` to `eval_run_id`** on each observation trace so sequential and parallel sharded runs appear as **one Thread** in the Opik UI (in addition to existing metadata filtering).
 - Document how to start a second local Ollama server and recommended settings for 16 GB Intel Mac (including running with Opik on or off — developer's choice).
@@ -23,8 +23,8 @@ Oxford eval runs are sequential and wall-clock bound (~2–3 min/image on `qwen3
 - Host count MUST be ≥ worker count; workers round-robin across hosts.
 - Report observation order MUST match profile/manifest order, not completion order.
 - `duration_total_ms` in the merged report is **wall-clock** of the full sharded run.
-- No new required fields in eval report JSON (same shape as current reports).
-- Runtime `IdentifyPlantUseCase` / CLI identify path unchanged (eval-only host override).
+- Report JSON MAY include `run_purpose` and `git_commit` (see `eval-run-layout`); sharding MUST NOT add shard-specific top-level fields.
+- Runtime `IdentifyPlantUseCase` / CLI identify path unchanged (eval-only host override and eval artifact grouping).
 
 ## Capabilities
 

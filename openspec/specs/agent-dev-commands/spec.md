@@ -46,7 +46,7 @@ The project SHALL provide a `/eval-run` slash command that starts an Oxford 102 
 #### Scenario: Default quick eval
 
 - **WHEN** a developer invokes `/eval-run` without arguments
-- **THEN** the agent SHALL prompt for or generate an `--eval-run-id`, use profile `quick`, enable Opik tracing guidance when Opik is reachable, verify `data/flowers/` prerequisites, and run `uv run python -m eval.run_oxford102` as a background/long-running process with periodic status checks until completion
+- **THEN** the agent SHALL obtain a non-empty `--run-purpose` from the developer before starting, prompt for or generate an `--eval-run-id`, use profile `quick`, enable Opik tracing guidance when Opik is reachable, verify `data/flowers/` prerequisites, and run `uv run python -m eval.run_oxford102 --run-purpose "<purpose>"` as a background/long-running process with periodic status checks until completion
 
 #### Scenario: Profile override
 
@@ -65,12 +65,12 @@ The project SHALL provide a `/eval-triage` slash command that summarizes eval fa
 #### Scenario: Latest report default
 
 - **WHEN** a developer invokes `/eval-triage` without arguments
-- **THEN** the agent SHALL locate the most recent JSON report under `artifacts/eval/`, summarize top-1/top-3 accuracy, list failed observations with ground truth vs prediction, and cite report paths
+- **THEN** the agent SHALL locate the latest run via `eval_runs/index.json` or the newest `eval_runs/*/eval/report.json`, summarize top-1/top-3 accuracy, list failed observations with ground truth vs prediction, cite `run_purpose`, and cite report paths
 
 #### Scenario: Named run
 
 - **WHEN** a developer invokes `/eval-triage prompt-v1-baseline`
-- **THEN** the agent SHALL open the matching report for that `eval_run_id` slug
+- **THEN** the agent SHALL open `eval_runs/<eval_run_id>/eval/report.json` for that slug
 
 #### Scenario: Opik follow-up
 

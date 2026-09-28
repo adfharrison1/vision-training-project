@@ -14,7 +14,7 @@ See `proposal.md` — Why. Today `eval/run_oxford102.py` loops observations sequ
 **Non-Goals:**
 - Process manager for Ollama servers, Docker compose for Ollama, or cloud GPU routing
 - Runtime CLI / `plant-id identify` parallelism
-- Changing `EvalReport` JSON schema or adding shard metadata fields
+- Adding shard-specific top-level report fields (report path: `eval_runs/<id>/eval/report.json`; `run_purpose` / `git_commit` from eval-run-layout are OK)
 - Pl@ntNet baseline under sharding (reject at CLI parse time)
 - Guarantees of linear speedup on 16 GB Intel (document expectations only)
 
@@ -71,10 +71,10 @@ Validation errors (exit code 1 before any identify):
       +-- collect all rows, sort by i
       +-- compute_metrics(sorted_rows)
       +-- build_report(... duration_total_ms = wall_clock)
-      +-- write_report(single path)
+      +-- write_report(eval_runs/<eval_run_id>/eval/report.json)
 ```
 
-- Reuse `eval/report.py` models unchanged.
+- Reuse `eval/report.py` models; report path is `eval_runs/<eval_run_id>/eval/report.json`.
 - `partial` / `--max-duration`: when budget exceeded, stop submitting new tasks; drain in-flight futures; mark `partial=True` with `stopped_reason` (same semantics as sequential).
 - Stderr progress: log `[i/total] image_XXXXX.jpg` when each task **starts** or **completes** (pick one; document in implementation — prefer **complete** to reduce interleaved noise).
 
