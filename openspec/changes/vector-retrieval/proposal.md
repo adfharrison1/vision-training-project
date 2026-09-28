@@ -1,4 +1,4 @@
-> **Status:** PLACEHOLDER — this proposal is indicative only and subject to full revision when planning begins.
+> **Status:** SUPERSEDED by `openspec/changes/species-rag-retrieval/` — do not implement separately.
 
 ## Why
 
