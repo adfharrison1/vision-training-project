@@ -27,6 +27,9 @@ def test_run_oxford102_smoke_profile() -> None:
             "smoke",
             "--eval-run-id",
             "integration-smoke",
+            "--run-purpose",
+            "integration smoke eval",
+            "--force",
             "--quiet",
         ]
     )

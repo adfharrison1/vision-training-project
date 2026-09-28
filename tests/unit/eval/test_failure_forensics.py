@@ -44,12 +44,14 @@ def test_write_eval_failure_artifact(tmp_path: Path) -> None:
         trace_id="trace-1",
         identification_raw={
             "response": {
-                "choices": [{"message": {"content": '{"predictions":[{"species_label":"calendula"}]}'}}]
+                "choices": [
+                    {"message": {"content": '{"predictions":[{"species_label":"calendula"}]}'}}
+                ]
             }
         },
-        artifacts_root=tmp_path,
+        eval_runs_root=tmp_path,
     )
-    assert path == eval_failures_dir("debug-run", artifacts_root=tmp_path) / "image_02189.json"
+    assert path == eval_failures_dir("debug-run", eval_runs_root=tmp_path) / "image_02189.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["invalid_species_label"] == "calendula"
     assert "calendula" in payload["model"]["message_content"]

@@ -1,5 +1,6 @@
-import pytest
 from pathlib import Path
+
+import pytest
 
 from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation

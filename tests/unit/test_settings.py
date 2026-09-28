@@ -7,7 +7,8 @@ def test_settings_defaults_use_project_paths() -> None:
     settings = Settings()
     root = Path(__file__).resolve().parents[2]
     assert settings.species_catalog_path == root / "resources" / "species_catalog" / "default.txt"
-    assert settings.artifacts_dir == root / "artifacts"
+    assert settings.identify_artifacts_dir == root / "identify_artifacts"
+    assert settings.eval_runs_dir == root / "eval_runs"
     assert settings.vision_model == "qwen3-vl:2b"
     assert settings.uncertainty_threshold == 0.5
     assert settings.prompt_version == "closed-set-v3"

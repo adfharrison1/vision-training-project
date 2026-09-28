@@ -21,6 +21,7 @@ def test_write_report_creates_valid_json(tmp_path: Path) -> None:
     metrics = compute_metrics(rows)
     report = build_report(
         eval_run_id="prompt-v1",
+        run_purpose="report unit test",
         profile="smoke",
         model_tag="qwen3-vl:2b",
         backend="vlm",
@@ -61,6 +62,7 @@ def test_write_report_includes_inference_metadata(tmp_path: Path) -> None:
     )
     report = build_report(
         eval_run_id="cloud-run",
+        run_purpose="inference metadata test",
         profile="smoke",
         model_tag=inference.model,
         backend="vlm-cloud",
@@ -119,6 +121,7 @@ def test_write_report_includes_aggregated_inference_usage(tmp_path: Path) -> Non
     )
     report = build_report(
         eval_run_id="cloud-run",
+        run_purpose="inference metadata test",
         profile="smoke",
         model_tag=inference.model,
         backend="vlm-cloud",

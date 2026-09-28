@@ -28,6 +28,7 @@ def _sample_args(**overrides) -> Namespace:
     defaults = {
         "profile": "smoke",
         "eval_run_id": "unit-test",
+        "run_purpose": "unit test eval run",
         "backend": "vlm",
         "split": "test",
         "limit": None,
@@ -35,12 +36,21 @@ def _sample_args(**overrides) -> Namespace:
         "quiet": True,
         "dataset_root": None,
         "output": None,
+        "force": False,
         "plantnet_baseline": False,
         "profile_manifest": None,
         "think": None,
     }
     defaults.update(overrides)
     return Namespace(**defaults)
+
+
+def _settings_for_eval(tmp_path: Path) -> Settings:
+    return Settings(
+        species_catalog_path=Path("resources/species_catalog/default.txt"),
+        eval_runs_dir=tmp_path / "eval_runs",
+        identify_artifacts_dir=tmp_path / "identify_artifacts",
+    )
 
 
 def test_parse_duration_budget_minutes() -> None:
@@ -58,7 +68,7 @@ def test_parse_duration_budget_rejects_invalid() -> None:
 
 def test_build_parser_defaults_backend_to_vlm_cloud() -> None:
     parser = build_parser()
-    args = parser.parse_args([])
+    args = parser.parse_args(["--run-purpose", "parser default test"])
     assert args.backend == "vlm-cloud"
 
 
@@ -114,7 +124,7 @@ def test_run_eval_aggregates_token_usage_in_report(tmp_path: Path) -> None:
                 },
             )(),
         ),
-        patch("eval.run_oxford102.load_settings", return_value=_mock_settings()),
+        patch("eval.run_oxford102.load_settings", return_value=_settings_for_eval(tmp_path)),
         patch(
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
@@ -170,7 +180,7 @@ def test_run_eval_writes_report_when_plantnet_disabled(tmp_path: Path) -> None:
                 {"exit_code": 0, "error_message": None, "result": fake_result},
             )(),
         ),
-        patch("eval.run_oxford102.load_settings", return_value=_mock_settings()),
+        patch("eval.run_oxford102.load_settings", return_value=_settings_for_eval(tmp_path)),
         patch(
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
@@ -225,7 +235,7 @@ def test_run_eval_local_metrics_survive_plantnet_failure(tmp_path: Path) -> None
                 {"exit_code": 0, "error_message": None, "result": fake_result},
             )(),
         ),
-        patch("eval.run_oxford102.load_settings", return_value=_mock_settings()),
+        patch("eval.run_oxford102.load_settings", return_value=_settings_for_eval(tmp_path)),
         patch(
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
@@ -239,6 +249,59 @@ def test_run_eval_local_metrics_survive_plantnet_failure(tmp_path: Path) -> None
     payload = output_path.read_text(encoding="utf-8")
     assert '"top1_accuracy": 1.0' in payload
     assert '"plantnet"' in payload
+
+
+def test_run_eval_writes_manifest_and_index(tmp_path: Path) -> None:
+    settings = _settings_for_eval(tmp_path)
+    fake_result = ObservationResult(
+        observation_id="eval-unit-test-image_00001",
+        predictions=(
+            Prediction(
+                rank=1,
+                species_label="tiger lily",
+                evidence="test",
+                confidence=0.9,
+            ),
+        ),
+        model_tag="qwen3-vl:2b",
+        prompt_version="closed-set-v1",
+    )
+
+    with (
+        patch(
+            "eval.run_oxford102.list_eval_images",
+            return_value=[
+                type(
+                    "EvalImage",
+                    (),
+                    {
+                        "image_path": Path("data/flowers/jpg/image_00001.jpg"),
+                        "ground_truth": "tiger lily",
+                    },
+                )()
+            ],
+        ),
+        patch(
+            "eval.run_oxford102.execute_identify",
+            return_value=type(
+                "Outcome",
+                (),
+                {"exit_code": 0, "error_message": None, "result": fake_result},
+            )(),
+        ),
+        patch("eval.run_oxford102.load_settings", return_value=settings),
+        patch(
+            "eval.run_oxford102.FileSpeciesCatalog",
+            return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
+        ),
+    ):
+        exit_code = run_eval(_sample_args(force=True))
+
+    assert exit_code == 0
+    run_root = settings.eval_runs_dir / "unit-test"
+    assert (run_root / "manifest.json").is_file()
+    assert (settings.eval_runs_dir / "index.json").is_file()
+    assert (run_root / "eval" / "report.json").is_file()
 
 
 def test_run_eval_applies_ollama_think_flag(tmp_path: Path) -> None:
@@ -258,7 +321,7 @@ def test_run_eval_applies_ollama_think_flag(tmp_path: Path) -> None:
     )
     captured: dict[str, bool] = {}
 
-    def capture_identify(_backend, _paths, _observation_id, settings) -> object:
+    def capture_identify(_backend, _paths, _observation_id, settings, **kwargs) -> object:
         captured["ollama_think"] = settings.ollama_think
         return type(
             "Outcome",
@@ -281,13 +344,16 @@ def test_run_eval_applies_ollama_think_flag(tmp_path: Path) -> None:
             ],
         ),
         patch("eval.run_oxford102.execute_identify", side_effect=capture_identify),
-        patch("eval.run_oxford102.load_settings", return_value=Settings(ollama_think=False)),
+        patch(
+            "eval.run_oxford102.load_settings",
+            return_value=_settings_for_eval(tmp_path).model_copy(update={"ollama_think": False}),
+        ),
         patch(
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
         ),
     ):
-        exit_code = run_eval(_sample_args(output=output_path, think=True))
+        exit_code = run_eval(_sample_args(output=output_path, think=True, force=True))
 
     assert exit_code == 0
     assert captured["ollama_think"] is True
