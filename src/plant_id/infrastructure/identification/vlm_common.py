@@ -103,17 +103,19 @@ def parse_vlm_result(
         raise IdentificationError(f"Unknown species_label: {top_rank_label}")
 
     predictions: list[Prediction] = []
+    next_rank = 1
     for entry in parsed_items:
         if entry["species_label"] not in allowed:
             continue
         predictions.append(
             Prediction(
-                rank=entry["rank"],
+                rank=next_rank,
                 species_label=entry["species_label"],
                 evidence=entry["evidence"],
                 confidence=entry["confidence"],
             )
         )
+        next_rank += 1
 
     if not predictions:
         raise IdentificationError(f"Unknown species_label: {top_rank_label}")

@@ -70,6 +70,18 @@ def test_yellow16_manifest_has_sixteen_rows_with_ten_yellow_species() -> None:
     assert yellow16[8].image_name == "image_03641.jpg"
 
 
+def test_curated48_manifest_includes_yellow16_core_and_forty_eight_rows() -> None:
+    yellow_manifest = load_profile_manifest(Path("eval/profiles/yellow16.yaml"))
+    yellow16 = select_manifest_observations(yellow_manifest, "yellow16")
+    curated_manifest = load_profile_manifest(Path("eval/profiles/curated48.yaml"))
+    curated48 = select_manifest_observations(curated_manifest, "curated48")
+
+    assert len(curated48) == 48
+    assert len({row.image_name for row in curated48}) == 48
+    assert curated48[:16] == yellow16
+    assert len({row.species for row in curated48}) == 48
+
+
 def test_primula_repeat10_manifest_has_ten_rows() -> None:
     manifest = load_profile_manifest(Path("eval/profiles/primula_repeat10.yaml"))
     rows = select_manifest_observations(manifest, "primula_repeat10")

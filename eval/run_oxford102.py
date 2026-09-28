@@ -12,7 +12,11 @@ from urllib.parse import urlparse
 
 from eval.baselines.plantnet import identify_image, plantnet_api_key
 from eval.dataset import EvalProfile, list_eval_images, resolve_profile
-from eval.failure_forensics import eval_failures_dir, write_eval_failure_artifact
+from eval.failure_forensics import (
+    ensure_eval_failure_forensics,
+    eval_failures_dir,
+    write_eval_failure_artifact,
+)
 from eval.inference_usage import aggregate_token_usage, usage_from_identification_raw
 from eval.metrics import (
     ObservationResultRow,
@@ -251,17 +255,17 @@ def _run_local_observation(
     tokens = _token_fields()
     if outcome.error_message or outcome.result is None:
         error = outcome.error_message or "Identification returned no result."
-        if outcome.error_message:
-            write_eval_failure_artifact(
-                eval_run_id=eval_run_id,
-                image=image_path.name,
-                ground_truth=ground_truth,
-                observation_id=observation_id,
-                error=error,
-                trace_id=trace_id,
-                identification_raw=outcome.identification_raw,
-                eval_runs_root=eval_runs_root,
-            )
+        write_eval_failure_artifact(
+            eval_run_id=eval_run_id,
+            image=image_path.name,
+            ground_truth=ground_truth,
+            observation_id=observation_id,
+            failure_kind="parse",
+            error=error,
+            trace_id=trace_id,
+            identification_raw=outcome.identification_raw,
+            eval_runs_root=eval_runs_root,
+        )
         return ObservationResultRow(
             image=image_path.name,
             ground_truth=ground_truth,
@@ -277,12 +281,28 @@ def _run_local_observation(
 
     predictions = tuple(prediction.species_label for prediction in outcome.result.predictions)
     predicted = predictions[0] if predictions else None
+    top1 = top1_correct(predictions, ground_truth)
+    top3 = top3_correct(predictions, ground_truth)
+    if not top1:
+        write_eval_failure_artifact(
+            eval_run_id=eval_run_id,
+            image=image_path.name,
+            ground_truth=ground_truth,
+            observation_id=observation_id,
+            failure_kind="misclassification",
+            trace_id=trace_id,
+            identification_raw=outcome.identification_raw,
+            eval_runs_root=eval_runs_root,
+            predicted=predicted,
+            predictions=predictions,
+            top3_match=top3,
+        )
     return ObservationResultRow(
         image=image_path.name,
         ground_truth=ground_truth,
         predicted=predicted,
-        top1_match=top1_correct(predictions, ground_truth),
-        top3_match=top3_correct(predictions, ground_truth),
+        top1_match=top1,
+        top3_match=top3,
         duration_ms=duration_ms,
         observation_id=observation_id,
         trace_id=trace_id,
@@ -420,6 +440,12 @@ def run_eval(args: argparse.Namespace) -> int:
             plantnet_rows.append(plantnet_row)
 
     duration_total_ms = int((time.perf_counter() - run_started) * 1000)
+    ensure_eval_failure_forensics(
+        eval_run_id=eval_run_id,
+        rows=rows,
+        artifacts_dir=paths.artifacts_dir,
+        eval_runs_root=eval_runs_root,
+    )
     metrics = compute_metrics(rows)
     partial = stopped_reason is not None or len(rows) < len(images)
 
@@ -464,7 +490,7 @@ def run_eval(args: argparse.Namespace) -> int:
         stopped_reason=stopped_reason,
         inference=_inference_section(settings, backend, rows),
         failure_artifacts_dir=eval_failures_dir(eval_run_id, eval_runs_root=eval_runs_root)
-        if metrics.parse_failure_count
+        if metrics.parse_failure_count or metrics.misclassification_count
         else None,
     )
     output_path = args.output or paths.report_path
@@ -498,14 +524,15 @@ def run_eval(args: argparse.Namespace) -> int:
                 f" tokens={usage.total_tokens} "
                 f"(prompt={usage.prompt_tokens} completion={usage.completion_tokens})"
             )
+        benchmark_misses = metrics.parse_failure_count + metrics.misclassification_count
         print(
             f"top-1={report.top1_accuracy:.3f} (success) / "
             f"{report.top1_accuracy_all:.3f} (all) "
             f"top-3={report.top3_accuracy:.3f} (success) / "
             f"{report.top3_accuracy_all:.3f} (all) "
-            f"parse_failures={report.parse_failure_count} "
-            f"misclass={report.misclassification_count} "
-            f"({report.success_count}/{report.observation_count} succeeded){usage_line}",
+            f"benchmark_misses={benchmark_misses} "
+            f"(parse={report.parse_failure_count} misclass={report.misclassification_count}) "
+            f"parsed_ok={report.success_count}/{report.observation_count}{usage_line}",
             file=sys.stderr,
         )
         if report.failure_artifacts_dir:

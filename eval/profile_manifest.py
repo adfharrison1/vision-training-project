@@ -20,6 +20,7 @@ PROFILE_OBSERVATION_COUNTS = {
     "yellow16": 16,
     "primula_repeat10": 10,
     "english_marigold_repeat10": 10,
+    "curated48": 48,
 }
 
 PROFILE_MANIFEST_FILES = {
@@ -29,6 +30,7 @@ PROFILE_MANIFEST_FILES = {
     "yellow16": "yellow16.yaml",
     "primula_repeat10": "primula_repeat10.yaml",
     "english_marigold_repeat10": "english_marigold_repeat10.yaml",
+    "curated48": "curated48.yaml",
 }
 
 

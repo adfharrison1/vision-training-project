@@ -75,3 +75,37 @@ def test_parse_vlm_result_rejects_invalid_top_rank_label(tmp_path: Path) -> None
             species_catalog=_catalog(),
             model_tag="test-model",
         )
+
+
+def test_parse_vlm_result_renumbers_skipped_ranks(tmp_path: Path) -> None:
+    photo = tmp_path / "flower.jpg"
+    photo.write_bytes(b"x")
+    observation = Observation(observation_id="obs-3", photo_paths=[photo])
+    payload = {
+        "predictions": [
+            {
+                "rank": 1,
+                "species_label": "monkshood",
+                "evidence": "hooded purple flowers",
+                "confidence": 0.9,
+            },
+            {
+                "rank": 3,
+                "species_label": "windflower",
+                "evidence": "similar spike",
+                "confidence": 0.2,
+            },
+        ]
+    }
+
+    result = parse_vlm_result(
+        observation,
+        payload,
+        settings=Settings(),
+        species_catalog=_catalog(),
+        model_tag="test-model",
+    )
+
+    assert [prediction.rank for prediction in result.predictions] == [1, 2]
+    assert result.predictions[0].species_label == "monkshood"
+    assert result.predictions[1].species_label == "windflower"

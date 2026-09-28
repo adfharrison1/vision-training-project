@@ -32,6 +32,7 @@ class EvalProfile(StrEnum):
     YELLOW16 = "yellow16"
     PRIMULA_REPEAT10 = "primula_repeat10"
     ENGLISH_MARIGOLD_REPEAT10 = "english_marigold_repeat10"
+    CURATED48 = "curated48"
     FULL = "full"
 
 
@@ -42,6 +43,7 @@ PROFILE_SIZES: dict[EvalProfile, int | None] = {
     EvalProfile.YELLOW16: 16,
     EvalProfile.PRIMULA_REPEAT10: 10,
     EvalProfile.ENGLISH_MARIGOLD_REPEAT10: 10,
+    EvalProfile.CURATED48: 48,
     EvalProfile.FULL: None,
 }
 

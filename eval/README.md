@@ -23,6 +23,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `quick` | 8 | All 8 rows from `eval/profiles/quick.yaml` — one fixed image per species |
 | `mixed16` | 16 | All rows from `eval/profiles/mixed16.yaml` — 2 regression images + 14 fresh species |
 | `yellow16` | 16 | All rows from `eval/profiles/yellow16.yaml` — 10 yellow-forward species + 6 contrast rows |
+| `curated48` | 48 | Full **yellow16** core + mixed16 extensions + 20 stratified species (`curated48.yaml`) |
 | `primula_repeat10` | 10 | `eval/profiles/primula_repeat10.yaml` — `image_03641.jpg` × 10 |
 | `english_marigold_repeat10` | 10 | `eval/profiles/english_marigold_repeat10.yaml` — `image_05147.jpg` × 10 |
 | `full` | 6,149 | All test-split images |
@@ -33,7 +34,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, `primula_repeat10`, `english_marigold_repeat10`, or `full` |
+| `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, `curated48`, `primula_repeat10`, `english_marigold_repeat10`, or `full` |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
 | `--run-purpose` | *(required)* | Human-readable reason for this eval |
 | `--force` | off | Reuse an existing `eval_runs/<id>/` directory |
@@ -72,16 +73,27 @@ When `PLANT_ID_OPIK_ENABLED=true`, each observation trace includes `eval_run_id`
 
 ## Report metrics and failure forensics
 
-Eval reports include **split accuracy**:
+Eval reports include **split accuracy** and a single **benchmark miss** notion for the improvement loop:
 
 | Field | Meaning |
 |---|---|
-| `top1_accuracy` / `top3_accuracy` | On observations that parsed successfully |
-| `top1_accuracy_all` / `top3_accuracy_all` | Over every profile image (parse failures count as misses) |
-| `parse_failure_count` | Identification errors (e.g. off-catalog `species_label`) |
+| `top1_accuracy_all` / `top3_accuracy_all` | Over every profile image — **headline** for benchmark quality |
+| `top1_accuracy` / `top3_accuracy` | On observations that parsed successfully only |
+| `parse_failure_count` | Identification/parsing errors (`error` on the row) |
 | `misclassification_count` | Parsed OK but wrong top-1 |
+| `failures[]` | All benchmark misses: parse **or** wrong top-1 (`len(failures[]) = parse_failure_count + misclassification_count`) |
+| `failure_count` | Parse errors only (same as `parse_failure_count`) — **not** `len(failures[])` |
+| `success_count` | Valid parses — **not** “all labels correct” |
 
-When parse failures occur, stderr prints `Failure forensics: eval_runs/<eval-run-id>/eval/failures/`. Each JSON file captures `message_content`, truncated `reasoning_content_preview`, and retry output when `PLANT_ID_INVALID_LABEL_RETRY_ENABLED=true` (default). Use agent command **`/eval-debug`** for a structured post-mortem workflow.
+When any benchmark miss occurs, stderr prints `Failure forensics: eval_runs/<eval-run-id>/eval/failures/` and a summary line `benchmark_misses=N (parse=… misclass=…) parsed_ok=…`.
+
+Each forensics JSON (`eval/failures/<image_stem>.json`) is written for **parse failures and misclassifications**, with `failure_kind`, ground truth, trace id, and (when available) `model.message_content` / truncated reasoning. Use agent command **`/eval-debug`** for a structured post-mortem workflow.
+
+**Backfill forensics** for a run that already has `eval/report.json` and identify artifacts but predates misclass forensics:
+
+```bash
+uv run python -m eval.sync_failure_forensics curated48-baseline
+```
 
 **Legacy layout:** one-time migration from the old flat `artifacts/` tree:
 

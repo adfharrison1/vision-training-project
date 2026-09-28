@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+from eval.metrics import ObservationResultRow
+
+FailureKind = Literal["parse", "misclassification"]
 
 _REASONING_PREVIEW_CHARS = 8_000
 _UNKNOWN_LABEL_PATTERN = re.compile(r"Unknown species_label: (.+)$")
@@ -98,28 +102,59 @@ def eval_failure_artifact_path(
     return eval_failures_dir(eval_run_id, eval_runs_root=eval_runs_root) / f"{stem}.json"
 
 
+def identification_raw_from_eval_artifact(
+    artifacts_dir: Path,
+    observation_id: str,
+) -> dict[str, Any] | None:
+    """Load the VLM raw payload from the newest per-observation identify artifact."""
+    if not artifacts_dir.is_dir():
+        return None
+    matches = list(artifacts_dir.glob(f"*_{observation_id}.json"))
+    if not matches:
+        return None
+    latest = max(matches, key=lambda path: path.stat().st_mtime)
+    try:
+        payload = json.loads(latest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    raw = payload.get("raw")
+    return raw if isinstance(raw, dict) else None
+
+
 def write_eval_failure_artifact(
     *,
     eval_run_id: str,
     image: str,
     ground_truth: str,
     observation_id: str,
-    error: str,
+    failure_kind: FailureKind,
     trace_id: str | None,
     identification_raw: dict[str, Any] | None,
     eval_runs_root: Path | None = None,
+    error: str | None = None,
+    predicted: str | None = None,
+    predictions: tuple[str, ...] | list[str] = (),
+    top3_match: bool | None = None,
 ) -> Path:
     payload: dict[str, Any] = {
         "eval_run_id": eval_run_id,
+        "failure_kind": failure_kind,
         "image": image,
         "ground_truth": ground_truth,
         "observation_id": observation_id,
         "trace_id": trace_id,
-        "error": error,
     }
-    invalid_label = invalid_species_label_from_error(error)
-    if invalid_label:
-        payload["invalid_species_label"] = invalid_label
+    if error is not None:
+        payload["error"] = error
+        invalid_label = invalid_species_label_from_error(error)
+        if invalid_label:
+            payload["invalid_species_label"] = invalid_label
+    if predicted is not None:
+        payload["predicted"] = predicted
+    if predictions:
+        payload["predictions"] = list(predictions)
+    if top3_match is not None:
+        payload["top3_match"] = top3_match
     forensics = extract_identification_forensics(identification_raw)
     if forensics:
         payload["model"] = forensics
@@ -132,3 +167,53 @@ def write_eval_failure_artifact(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return output_path
+
+
+def ensure_eval_failure_forensics(
+    *,
+    eval_run_id: str,
+    rows: list[ObservationResultRow],
+    artifacts_dir: Path,
+    eval_runs_root: Path | None = None,
+) -> None:
+    """Write missing forensics JSON for benchmark misses (parse errors and misclassifications)."""
+    for row in rows:
+        if row.error is None and row.top1_match:
+            continue
+        output_path = eval_failure_artifact_path(
+            eval_run_id,
+            row.image,
+            eval_runs_root=eval_runs_root,
+        )
+        if output_path.is_file():
+            continue
+        identification_raw = identification_raw_from_eval_artifact(
+            artifacts_dir,
+            row.observation_id,
+        )
+        if row.error is not None:
+            write_eval_failure_artifact(
+                eval_run_id=eval_run_id,
+                image=row.image,
+                ground_truth=row.ground_truth,
+                observation_id=row.observation_id,
+                failure_kind="parse",
+                trace_id=row.trace_id,
+                identification_raw=identification_raw,
+                eval_runs_root=eval_runs_root,
+                error=row.error,
+            )
+            continue
+        write_eval_failure_artifact(
+            eval_run_id=eval_run_id,
+            image=row.image,
+            ground_truth=row.ground_truth,
+            observation_id=row.observation_id,
+            failure_kind="misclassification",
+            trace_id=row.trace_id,
+            identification_raw=identification_raw,
+            eval_runs_root=eval_runs_root,
+            predicted=row.predicted,
+            predictions=row.predictions,
+            top3_match=row.top3_match,
+        )

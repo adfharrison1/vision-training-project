@@ -18,17 +18,21 @@ Triage an Oxford 102 eval report and suggest what to fix next.
 2. **Read and summarize**
    - Parse the JSON report. Key fields:
      - `eval_run_id`, `run_purpose`, `profile`, `model_tag`, `backend`
-     - `top1_accuracy`, `top3_accuracy` — on **successful** parses only
-     - `top1_accuracy_all`, `top3_accuracy_all` — over **all** profile images
-     - `parse_failure_count`, `misclassification_count`, `failure_count`
-     - `failure_artifacts_dir` — forensics JSON when parse failures occurred
-     - `failures[]`: `image`, `ground_truth`, `predicted`, `trace_id`, `observation_id`, `error`
+     - **Benchmark misses (improvement loop):** `benchmark_misses = parse_failure_count + misclassification_count` — MUST equal `len(failures[])` when the report is complete
+     - `top1_accuracy_all`, `top3_accuracy_all` — headline accuracy over **every** profile image (each benchmark miss counts as a miss)
+     - `top1_accuracy`, `top3_accuracy` — on **successful parses only** (denominator excludes parse errors)
+     - `parse_failure_count`, `misclassification_count` — breakdown of benchmark misses
+     - `failure_count` — **parse errors only** (same as `parse_failure_count`); do **not** treat as total failures
+     - `success_count` — observations that parsed OK (`error` null); **not** the same as “benchmark pass”
+     - `failure_artifacts_dir` — per-image forensics JSON for **all** benchmark misses (parse + misclass)
+     - `failures[]`: canonical triage list (`error` set → parse; else wrong top-1)
      - `observations[]`: per-row `top1_match`, `top3_match`, `trace_id`, `predictions`
      - `per_class`: breakdown by species
-   - Present: split metrics (success vs all), parse failures vs misclassifications separately
+   - Lead the summary with **benchmark misses** and list every row in `failures[]`, grouped parse vs misclass
+   - Then show split metrics `(success)` vs `(all)` for context
 
-3. **Deep debug (optional)**
-   - For parse failures or when the user wants model text, run **`/eval-debug`** (same optional `eval-run-id`) instead of duplicating its workflow here
+3. **Deep debug**
+   - Run **`/eval-debug`** (same optional `eval-run-id`) for forensics JSON under `eval/failures/` and grouped RCA
 
 4. **Improvement-loop guidance**
    - Recommend changing **one variable** before the next run (prompt, model, reasoning effort, manifest row, etc.)

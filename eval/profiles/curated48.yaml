@@ -1,0 +1,112 @@
+# Curated48: 48-image improvement benchmark (not all yellow flowers).
+#
+# Structure:
+#   1. Full yellow16 block (yellow-forward + contrast rows — regression core)
+#   2. Twelve mixed16 rows not already in yellow16
+#   3. Twenty additional test-split species for color/shape coverage
+#
+# Run:
+#   uv run python -m eval.run_oxford102 --profile curated48 --run-purpose "..." --eval-run-id ...
+
+observations:
+  # --- yellow16 core (16) ---
+  - species: yellow iris
+    image: image_06346.jpg
+  - species: buttercup
+    image: image_04626.jpg
+  - species: globe-flower
+    image: image_06653.jpg
+  - species: barbeton daisy
+    image: image_02189.jpg
+  - species: common dandelion
+    image: image_06297.jpg
+  - species: californian poppy
+    image: image_03182.jpg
+  - species: colt's foot
+    image: image_03994.jpg
+  - species: wallflower
+    image: image_00947.jpg
+  - species: primula
+    image: image_03641.jpg
+  - species: english marigold
+    image: image_05147.jpg
+  - species: canterbury bells
+    image: image_06613.jpg
+  - species: tiger lily
+    image: image_07162.jpg
+  - species: sweet pea
+    image: image_05629.jpg
+  - species: bird of paradise
+    image: image_03284.jpg
+  - species: purple coneflower
+    image: image_03828.jpg
+  - species: rose
+    image: image_01143.jpg
+
+  # --- mixed16 extension (12; skips rows duplicated in yellow16) ---
+  - species: pink primrose
+    image: image_06734.jpg
+  - species: marigold
+    image: image_04953.jpg
+  - species: wild pansy
+    image: image_04159.jpg
+  - species: sunflower
+    image: image_05399.jpg
+  - species: bearded iris
+    image: image_05903.jpg
+  - species: daffodil
+    image: image_05686.jpg
+  - species: water lily
+    image: image_00252.jpg
+  - species: passion flower
+    image: image_00001.jpg
+  - species: geranium
+    image: image_02639.jpg
+  - species: foxglove
+    image: image_07304.jpg
+  - species: carnation
+    image: image_06890.jpg
+  - species: black-eyed susan
+    image: image_05849.jpg
+
+  # --- stratified fill (20) ---
+  - species: moon orchid
+    image: image_07200.jpg
+  - species: hard-leaved pocket orchid
+    image: image_05087.jpg
+  - species: magnolia
+    image: image_05460.jpg
+  - species: tree poppy
+    image: image_05278.jpg
+  - species: petunia
+    image: image_01315.jpg
+  - species: poinsettia
+    image: image_01491.jpg
+  - species: hippeastrum
+    image: image_04832.jpg
+  - species: cyclamen
+    image: image_00446.jpg
+  - species: camellia
+    image: image_07594.jpg
+  - species: azalea
+    image: image_03545.jpg
+  - species: peruvian lily
+    image: image_04245.jpg
+  - species: stemless gentian
+    image: image_05212.jpg
+  - species: monkshood
+    image: image_06395.jpg
+  - species: bolero deep blue
+    image: image_07123.jpg
+  - species: spring crocus
+    image: image_07046.jpg
+  - species: giant white arum lily
+    image: image_04898.jpg
+  - species: king protea
+    image: image_05744.jpg
+  - species: spear thistle
+    image: image_06050.jpg
+  - species: artichoke
+    image: image_04081.jpg
+  - species: canna lily
+    image: image_04401.jpg
