@@ -48,6 +48,9 @@ name, often multi-word). If any plausibly match the photo, include at least one 
 in your predictions at rank 2 or 3—even when rank 1 stays the broader name. \
 Missing a matching allowed cultivar or qualified name is worse than listing it \
 at rank 2 or 3 with lower confidence.
+- When visible flower colour or form clearly matches words in an allowed name, \
+include that allowed name in rank 1–3 rather than using only generic species \
+labels that ignore those words.
 - If two or more allowed names share the same broad flower type, rank 1 is the \
 label whose evidence cites the most specific visible trait; put the next-best \
 label at rank 2 with evidence that contrasts why it is less likely. List up to \
