@@ -80,21 +80,22 @@ def invalid_species_label_from_error(error: str | None) -> str | None:
 def eval_failures_dir(
     eval_run_id: str,
     *,
-    artifacts_root: Path | None = None,
+    eval_runs_root: Path | None = None,
 ) -> Path:
-    root = artifacts_root or Path("artifacts") / "eval"
-    safe_run_id = eval_run_id.replace("/", "-").replace(" ", "-")
-    return root / safe_run_id / "failures"
+    from eval.run_registry import eval_run_paths
+
+    root = eval_runs_root or Path("eval_runs")
+    return eval_run_paths(root, eval_run_id).failures_dir
 
 
 def eval_failure_artifact_path(
     eval_run_id: str,
     image_name: str,
     *,
-    artifacts_root: Path | None = None,
+    eval_runs_root: Path | None = None,
 ) -> Path:
     stem = Path(image_name).stem
-    return eval_failures_dir(eval_run_id, artifacts_root=artifacts_root) / f"{stem}.json"
+    return eval_failures_dir(eval_run_id, eval_runs_root=eval_runs_root) / f"{stem}.json"
 
 
 def write_eval_failure_artifact(
@@ -106,7 +107,7 @@ def write_eval_failure_artifact(
     error: str,
     trace_id: str | None,
     identification_raw: dict[str, Any] | None,
-    artifacts_root: Path | None = None,
+    eval_runs_root: Path | None = None,
 ) -> Path:
     payload: dict[str, Any] = {
         "eval_run_id": eval_run_id,
@@ -126,7 +127,7 @@ def write_eval_failure_artifact(
     output_path = eval_failure_artifact_path(
         eval_run_id,
         image,
-        artifacts_root=artifacts_root,
+        eval_runs_root=eval_runs_root,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

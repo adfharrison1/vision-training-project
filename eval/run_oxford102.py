@@ -25,8 +25,18 @@ from eval.report import (
     ObservationReportRow,
     PlantNetReportSection,
     build_report,
-    default_report_path,
     write_report,
+)
+from eval.run_registry import (
+    append_index_entry,
+    capture_git_commit,
+    ensure_run_dirs,
+    eval_run_paths,
+    index_entry_from_manifest,
+    manifest_from_report,
+    run_dir_exists,
+    utc_now_iso,
+    write_manifest,
 )
 from plant_id.infrastructure.observability.opik_tracing import eval_trace_session
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
@@ -80,6 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Correlation id for report and Opik traces (default: timestamp slug)",
     )
     parser.add_argument(
+        "--run-purpose",
+        required=True,
+        help="Non-empty human-readable reason for this eval run (required)",
+    )
+    parser.add_argument(
         "--backend",
         choices=["vlm", "vlm-cloud", "classical"],
         default="vlm-cloud",
@@ -126,7 +141,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         default=None,
-        help="Report output path (default: artifacts/eval/<timestamp>-<run-id>.json)",
+        help="Report output path (default: eval_runs/<run-id>/eval/report.json)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow reusing an existing eval_runs/<run-id> directory",
     )
     parser.add_argument(
         "--plantnet-baseline",
@@ -193,6 +213,8 @@ def _run_local_observation(
     eval_run_id: str,
     profile: str,
     settings,
+    artifact_dir: Path,
+    eval_runs_root: Path,
 ) -> ObservationResultRow:
     observation_id = _observation_id(eval_run_id, image_path)
     started = time.perf_counter()
@@ -206,6 +228,7 @@ def _run_local_observation(
             [image_path],
             observation_id,
             settings,
+            artifact_dir=artifact_dir,
         )
         trace_id = session.trace_id
 
@@ -237,6 +260,7 @@ def _run_local_observation(
                 error=error,
                 trace_id=trace_id,
                 identification_raw=outcome.identification_raw,
+                eval_runs_root=eval_runs_root,
             )
         return ObservationResultRow(
             image=image_path.name,
@@ -305,9 +329,28 @@ def _run_plantnet_observation(
 
 def run_eval(args: argparse.Namespace) -> int:
     settings = resolve_settings(load_settings(), ollama_think=args.think)
+    run_purpose = (args.run_purpose or "").strip()
+    if not run_purpose:
+        print("--run-purpose must be a non-empty string.", file=sys.stderr)
+        return 1
+
     eval_run_id = args.eval_run_id or default_eval_run_id()
     profile = resolve_profile(args.profile).value
     backend: Backend = args.backend
+    eval_runs_root = settings.eval_runs_dir
+    paths = eval_run_paths(eval_runs_root, eval_run_id)
+
+    if run_dir_exists(paths) and not args.force:
+        print(
+            f"Eval run directory already exists: {paths.run_dir}\n"
+            "Use --force to reuse or choose a new --eval-run-id.",
+            file=sys.stderr,
+        )
+        return 1
+
+    ensure_run_dirs(paths)
+    started_at = utc_now_iso()
+    git_commit = capture_git_commit()
 
     catalog = FileSpeciesCatalog(settings.species_catalog_path)
     class_names = catalog.list_class_names()
@@ -362,6 +405,8 @@ def run_eval(args: argparse.Namespace) -> int:
             eval_run_id=eval_run_id,
             profile=profile,
             settings=settings,
+            artifact_dir=paths.artifacts_dir,
+            eval_runs_root=eval_runs_root,
         )
         rows.append(row)
 
@@ -406,6 +451,8 @@ def run_eval(args: argparse.Namespace) -> int:
 
     report = build_report(
         eval_run_id=eval_run_id,
+        run_purpose=run_purpose,
+        git_commit=git_commit,
         profile=profile,
         model_tag=_report_model_tag(settings, backend),
         backend=backend,
@@ -416,12 +463,31 @@ def run_eval(args: argparse.Namespace) -> int:
         partial=partial,
         stopped_reason=stopped_reason,
         inference=_inference_section(settings, backend, rows),
-        failure_artifacts_dir=eval_failures_dir(eval_run_id)
+        failure_artifacts_dir=eval_failures_dir(eval_run_id, eval_runs_root=eval_runs_root)
         if metrics.parse_failure_count
         else None,
     )
-    output_path = args.output or default_report_path(eval_run_id)
+    output_path = args.output or paths.report_path
     write_report(report, output_path)
+
+    finished_at = utc_now_iso()
+    report_payload = report.model_dump(mode="json")
+    manifest = manifest_from_report(
+        paths=paths,
+        eval_runs_root=eval_runs_root,
+        run_purpose=run_purpose,
+        prompt_version=settings.prompt_version,
+        started_at=started_at,
+        finished_at=finished_at,
+        git_commit=git_commit,
+        report_payload=report_payload,
+    )
+    write_manifest(
+        paths=paths,
+        eval_runs_root=eval_runs_root,
+        manifest=manifest,
+    )
+    append_index_entry(eval_runs_root, index_entry_from_manifest(manifest))
 
     if not args.quiet:
         print(f"Report written: {output_path}", file=sys.stderr)

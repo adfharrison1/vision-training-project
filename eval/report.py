@@ -86,6 +86,8 @@ class EvalReport(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     eval_run_id: str
+    run_purpose: str
+    git_commit: str | None = None
     profile: str
     model_tag: str
     backend: str
@@ -111,11 +113,15 @@ class EvalReport(BaseModel):
     inference: InferenceReportSection | None = None
 
 
-def default_report_path(eval_run_id: str, artifacts_root: Path | None = None) -> Path:
-    root = artifacts_root or Path("artifacts") / "eval"
-    timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
-    safe_run_id = eval_run_id.replace("/", "-").replace(" ", "-")
-    return root / f"{timestamp}-{safe_run_id}.json"
+def default_report_path(
+    eval_run_id: str,
+    *,
+    eval_runs_root: Path | None = None,
+) -> Path:
+    from eval.run_registry import eval_run_paths
+
+    root = eval_runs_root or Path("eval_runs")
+    return eval_run_paths(root, eval_run_id).report_path
 
 
 def _observation_row(row: ObservationResultRow) -> ObservationReportRow:
@@ -139,6 +145,8 @@ def _observation_row(row: ObservationResultRow) -> ObservationReportRow:
 def build_report(
     *,
     eval_run_id: str,
+    run_purpose: str,
+    git_commit: str | None = None,
     profile: str,
     model_tag: str,
     backend: str,
@@ -176,6 +184,8 @@ def build_report(
 
     return EvalReport(
         eval_run_id=eval_run_id,
+        run_purpose=run_purpose,
+        git_commit=git_commit,
         profile=profile,
         model_tag=model_tag,
         backend=backend,
