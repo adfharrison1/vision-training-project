@@ -40,6 +40,44 @@ def test_write_report_creates_valid_json(tmp_path: Path) -> None:
     assert payload["failures"] == []
 
 
+def test_build_report_failures_include_top3_match() -> None:
+    rows = [
+        ObservationResultRow(
+            image="image_02639.jpg",
+            ground_truth="geranium",
+            predicted="pelargonium",
+            top1_match=False,
+            top3_match=True,
+            duration_ms=100,
+            observation_id="obs-1",
+        ),
+        ObservationResultRow(
+            image="image_07123.jpg",
+            ground_truth="bolero deep blue",
+            predicted="canterbury bells",
+            top1_match=False,
+            top3_match=False,
+            duration_ms=100,
+            observation_id="obs-2",
+        ),
+    ]
+    metrics = compute_metrics(rows)
+    report = build_report(
+        eval_run_id="failures-top3",
+        run_purpose="failures top3_match field",
+        profile="smoke",
+        model_tag="test",
+        backend="vlm-cloud",
+        split="test",
+        metrics=metrics,
+        duration_total_ms=200,
+    )
+    assert len(report.failures) == 2
+    by_image = {failure.image: failure for failure in report.failures}
+    assert by_image["image_02639.jpg"].top3_match is True
+    assert by_image["image_07123.jpg"].top3_match is False
+
+
 def test_write_report_includes_inference_metadata(tmp_path: Path) -> None:
     rows = [
         ObservationResultRow(

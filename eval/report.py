@@ -18,6 +18,7 @@ class FailureRow(BaseModel):
     image: str
     ground_truth: str
     predicted: str | None = None
+    top3_match: bool
     trace_id: str | None = None
     observation_id: str
     error: str | None = None
@@ -165,6 +166,7 @@ def build_report(
             image=row.image,
             ground_truth=row.ground_truth,
             predicted=row.predicted,
+            top3_match=row.top3_match,
             trace_id=row.trace_id,
             observation_id=row.observation_id,
             error=row.error,
