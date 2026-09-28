@@ -91,7 +91,7 @@ class Settings(BaseSettings):
         description="Root directory for eval run bundles (manifest, report, grouped artifacts).",
     )
     prompt_version: str = Field(
-        default="closed-set-v3",
+        default="closed-set-v4",
         description="Prompt template version recorded in artifacts.",
     )
     opik_enabled: bool = Field(

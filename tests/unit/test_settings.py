@@ -11,7 +11,7 @@ def test_settings_defaults_use_project_paths() -> None:
     assert settings.eval_runs_dir == root / "eval_runs"
     assert settings.vision_model == "qwen3-vl:2b"
     assert settings.uncertainty_threshold == 0.5
-    assert settings.prompt_version == "closed-set-v3"
+    assert settings.prompt_version == "closed-set-v4"
     assert settings.ollama_timeout_seconds == 600.0
     assert settings.ollama_think is False
     assert settings.ollama_content_retry_enabled is True

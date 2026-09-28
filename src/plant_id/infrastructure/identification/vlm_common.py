@@ -26,10 +26,11 @@ Example shape:
 }}
 
 Rules:
-- Provide 1 to 3 predictions ranked by confidence.
-- species_label MUST match one allowed class name exactly (case and spelling).
-- Prefer the most specific allowed name when several overlap in meaning.
-- If two or more allowed names fit, list up to 3 distinct species_label values.
+- Provide 1 to 3 predictions ranked by confidence; use ranks 1, 2, and 3 consecutively with no gaps.
+- species_label MUST match one allowed class name exactly (case and spelling), including cultivar or variety names when they appear in the list—never substitute a different common name that is not on the list.
+- Do not choose species_label from colour or vague shape alone (e.g. "daisy-like", "bell-shaped"). In evidence, cite diagnostic structure: petal count or fusion, inflorescence type (single flower vs composite head), leaf arrangement, and distinctive parts (spur, hood, capsule, etc.).
+- Prefer the most specific allowed name when several overlap in meaning; specific means best supported by visible diagnostic traits, not the more familiar garden name.
+- If two or more allowed names share the same broad flower type, rank 1 is the label whose evidence cites the most specific visible trait; put the next-best label at rank 2 with evidence that contrasts why it is less likely. List up to 3 distinct species_label values when multiple names plausibly fit.
 - confidence is a number from 0.0 to 1.0 for each prediction.
 - Put only the JSON object in your reply — no markdown, commentary, or long reasoning.
 
