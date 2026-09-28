@@ -1,6 +1,6 @@
 # UK Plant Identification
 
-Identify flowering plants from photographs using a local vision-language model. Given 1–3 photos of one plant, the CLI returns ranked species predictions as JSON and saves a run record under `artifacts/`.
+Identify flowering plants from photographs using a local vision-language model. Given 1–3 photos of one plant, the CLI returns ranked species predictions as JSON and saves a run record under `identify_artifacts/`.
 
 Inference defaults to **local Ollama** for `plant-id identify` / `demo`. Optional **`vlm-cloud`** backend uses your own OpenAI-compatible endpoint (Fireworks documented in `.env.example`). Pl@ntNet and similar plant-ID APIs remain **eval-only** comparators, not runtime backends.
 
@@ -32,7 +32,7 @@ uv run plant-id demo --backend vlm
 uv run plant-id identify --backend vlm --photos /absolute/path/to/photo.jpg
 ```
 
-Add `--quiet` to hide progress on stderr. Results go to stdout; artifacts to `artifacts/`.
+Add `--quiet` to hide progress on stderr. Results go to stdout; artifacts to `identify_artifacts/`.
 
 ## CLI
 
@@ -63,7 +63,8 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | `VLM_CLOUD_REASONING_EFFORT` | `none` | Fireworks/OpenAI `reasoning_effort` (`none` disables thinking; omit env to use provider default) |
 | `SPECIES_CATALOG_PATH` | `resources/species_catalog/default.txt` | Allowed species labels (one per line) |
 | `UNCERTAINTY_THRESHOLD` | `0.5` | Top prediction below this sets `uncertain: true` |
-| `ARTIFACTS_DIR` | `artifacts/` | Where run JSON files are written |
+| `PLANT_ID_IDENTIFY_ARTIFACTS_DIR` | `identify_artifacts/` | CLI identify/demo run JSON |
+| `PLANT_ID_EVAL_RUNS_DIR` | `eval_runs/` | Eval run bundles (report, manifest, grouped artifacts) |
 | `OPIK_ENABLED` | `false` | Export Ollama traces to local Opik (self-hosted only) |
 | `OPIK_BASE_URL` | `http://127.0.0.1:5173/api` | Local Opik API URL — do not point at Comet cloud |
 | `OPIK_PROJECT_NAME` | `plant-id` | Opik project for identification traces |
@@ -190,19 +191,19 @@ Offline benchmark runner under `eval/`. Default model is **`qwen3-vl:2b`**. The 
 
 ```bash
 # Default quick profile (~8 images)
-uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline
+uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline --run-purpose "baseline prompt comparison"
 
 # Fast sanity check
-uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check --run-purpose "smoke after code change"
 
 # Optional Pl@ntNet comparison (eval-only; needs PLANTNET_API_KEY)
 export PLANTNET_API_KEY=your-key
 uv run python -m eval.run_oxford102 --plantnet-baseline --eval-run-id prompt-v1
 ```
 
-Reports are written to `artifacts/eval/` with top-1/top-3 accuracy, per-class breakdown, failures, and (when tracing is enabled) Opik `trace_id` values for diagnosis.
+Reports are written to `eval_runs/<eval-run-id>/eval/report.json` with manifests under `eval_runs/<eval-run-id>/manifest.json` and `eval_runs/index.json`. Per-observation identify JSON for eval lives in `eval_runs/<eval-run-id>/artifacts/`.
 
-**Improvement loop:** run eval → read JSON report failures → inspect traces in Opik UI or MCP → change one variable (prompt, catalog, threshold) → re-run the same profile with a new `--eval-run-id` suffix → compare reports.
+**Improvement loop:** run eval → read `eval_runs/index.json` or the run report → inspect failures / Opik traces → change one variable → re-run with new `--eval-run-id` and `--run-purpose`.
 
 When committing prompt iterations, use **one commit per version** with Conventional Commits and a `prompt-vN` scope (see [Git commits](#git-commits) below).
 
@@ -210,7 +211,7 @@ Enable Opik during eval runs:
 
 ```bash
 export PLANT_ID_OPIK_ENABLED=true
-uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1 --run-purpose "smoke with Opik"
 ```
 
 See `eval/README.md` for eval boundary rules and flag reference.
@@ -245,7 +246,8 @@ resources/species_catalog/
 data/                   downloaded datasets (gitignored)
 eval/                   offline evaluation (not used by the CLI)
 tests/
-artifacts/              run output (gitignored)
+identify_artifacts/    CLI identify/demo JSON (gitignored)
+eval_runs/             eval bundles + index (gitignored)
 ```
 
 ## License

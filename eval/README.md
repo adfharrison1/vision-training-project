@@ -6,10 +6,10 @@ Benchmark and comparison code only — **not** imported by runtime identificatio
 
 ```bash
 # Default quick profile (8 test-split images, ~30 min on qwen3-vl:2b)
-uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline
+uv run python -m eval.run_oxford102 --eval-run-id prompt-v1-baseline --run-purpose "baseline comparison"
 
 # Pipeline sanity (4 images)
-uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check --run-purpose "smoke check"
 
 # Full test split (~6,149 images — long-running benchmark)
 uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
@@ -35,6 +35,8 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 |---|---|---|
 | `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, `primula_repeat10`, `english_marigold_repeat10`, or `full` |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
+| `--run-purpose` | *(required)* | Human-readable reason for this eval |
+| `--force` | off | Reuse an existing `eval_runs/<id>/` directory |
 | `--backend` | `vlm-cloud` | Composition backend (`vlm`, `vlm-cloud`, `classical`); use `--backend vlm` for local Ollama |
 | `--think` / `--no-think` | `false` (or `PLANT_ID_OLLAMA_THINK`) | Enable Ollama thinking mode for this eval run |
 | `--split` | `test` | Oxford split (`train`, `validation`, `test`) |
@@ -43,7 +45,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `--quiet` / `--no-quiet` | quiet on | Suppress stderr progress |
 | `--dataset-root` | `data/flowers` | Oxford 102 root |
 | `--profile-manifest` | auto | YAML species/image pairs for smoke and quick |
-| `--output` | auto | Report path under `artifacts/eval/` |
+| `--output` | auto | Report path (default: `eval_runs/<id>/eval/report.json`) |
 | `--plantnet-baseline` | off | Optional Pl@ntNet comparison |
 
 ## Single-image ground truth
@@ -79,7 +81,14 @@ Eval reports include **split accuracy**:
 | `parse_failure_count` | Identification errors (e.g. off-catalog `species_label`) |
 | `misclassification_count` | Parsed OK but wrong top-1 |
 
-When parse failures occur, stderr prints `Failure forensics: artifacts/eval/<eval-run-id>/failures/`. Each JSON file captures `message_content`, truncated `reasoning_content_preview`, and retry output when `PLANT_ID_INVALID_LABEL_RETRY_ENABLED=true` (default). Use agent command **`/eval-debug`** for a structured post-mortem workflow.
+When parse failures occur, stderr prints `Failure forensics: eval_runs/<eval-run-id>/eval/failures/`. Each JSON file captures `message_content`, truncated `reasoning_content_preview`, and retry output when `PLANT_ID_INVALID_LABEL_RETRY_ENABLED=true` (default). Use agent command **`/eval-debug`** for a structured post-mortem workflow.
+
+**Legacy layout:** one-time migration from the old flat `artifacts/` tree:
+
+```bash
+uv run python -m eval.migrate_eval_runs          # eval reports -> eval_runs/
+uv run python -m eval.finalize_legacy_artifacts  # remaining eval + CLI JSON, then remove artifacts/
+```
 
 **Workflow:** read failures from the JSON report → open forensics JSON or Opik traces → change one thing → re-run the same profile.
 
@@ -87,7 +96,7 @@ Eval JSON reports include **`inference.usage`** (aggregated prompt/completion/to
 
 ```bash
 export PLANT_ID_OPIK_ENABLED=true
-uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1 --run-purpose "smoke with Opik"
 ```
 
 ## Pl@ntNet baseline (optional)

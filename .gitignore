@@ -7,6 +7,8 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 artifacts/
+eval_runs/
+identify_artifacts/
 .DS_Store
 *.log
 /data

@@ -6,7 +6,7 @@ category: "Workflow"
 
 Debug Oxford 102 eval failures using the aggregate report, split accuracy metrics, and per-image forensics JSON.
 
-**Input**: Optional `eval-run-id` slug (e.g. `yellow16-no-reason`). If omitted, use the most recent report under `artifacts/eval/` (by modification time).
+**Input**: Optional `eval-run-id` slug (e.g. `yellow16-no-reason`). If omitted, use the newest entry in `eval_runs/index.json` (or newest `eval_runs/*/eval/report.json` by mtime).
 
 **When to use**
 
@@ -16,10 +16,11 @@ Debug Oxford 102 eval failures using the aggregate report, split accuracy metric
 
 **Step 1 — Load the report**
 
-Find `artifacts/eval/*-<eval-run-id>.json` and read:
+Open `eval_runs/<eval-run-id>/eval/report.json` and read `eval_runs/<eval-run-id>/manifest.json` for `run_purpose`:
 
 | Field | Meaning |
 |---|---|
+| `run_purpose` | Why this eval was run |
 | `top1_accuracy`, `top3_accuracy` | Accuracy on **successful** parses only (legacy headline) |
 | `top1_accuracy_all`, `top3_accuracy_all` | Accuracy over **every** profile image (parse failures count as misses) |
 | `parse_failure_count` | Rows where identification raised an error (e.g. `Unknown species_label`) |
@@ -44,7 +45,7 @@ Always quote **both** `(success)` and `(all)` top-1 when summarizing — a run c
 For each parse failure, open:
 
 ```text
-artifacts/eval/<eval-run-id>/failures/<image_stem>.json
+eval_runs/<eval-run-id>/eval/failures/<image_stem>.json
 ```
 
 Each file includes:
@@ -70,11 +71,11 @@ Change **one variable** per iteration:
 | primula ↔ fire lily with reasoning on | Set `PLANT_ID_VLM_CLOUD_REASONING_EFFORT=none`; use `primula_repeat10` probe |
 | Persistent misclass on one species | Adjust manifest row in profile YAML or prompt disambiguation for that pair |
 
-Suggest a new `--eval-run-id` and the same `--profile` unless smoke is enough.
+Suggest a new `--eval-run-id`, `--run-purpose`, and the same `--profile` unless smoke is enough.
 
 **Output format**
 
-1. Report path and split metrics table
+1. Report path, `run_purpose`, and split metrics table
 2. Failure list grouped: parse vs misclass
 3. Forensics paths read (quote `message_content` / reasoning excerpt when useful)
 4. Single recommended next experiment

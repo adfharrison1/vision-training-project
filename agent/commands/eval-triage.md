@@ -6,18 +6,18 @@ category: "Workflow"
 
 Triage an Oxford 102 eval report and suggest what to fix next.
 
-**Input**: Optional `eval-run-id` slug (e.g. `prompt-v1-baseline`). If omitted, use the most recent JSON report under `artifacts/eval/` (by file modification time).
+**Input**: Optional `eval-run-id` slug (e.g. `prompt-v1-baseline`). If omitted, use the newest entry in `eval_runs/index.json` (or the newest `eval_runs/*/eval/report.json` by mtime if the index is missing).
 
 **Steps**
 
 1. **Locate report**
-   - If an id was provided, find `artifacts/eval/*-<eval-run-id>.json`
-   - Else pick the newest `artifacts/eval/*.json`
+   - If an id was provided, open `eval_runs/<eval-run-id>/eval/report.json` (and `eval_runs/<eval-run-id>/manifest.json` for `run_purpose`)
+   - Else read `eval_runs/index.json` and pick the first entry, or scan for the newest report
    - If none exist, tell the user to run `/eval-run` first
 
 2. **Read and summarize**
    - Parse the JSON report. Key fields:
-     - `eval_run_id`, `profile`, `model_tag`, `backend`
+     - `eval_run_id`, `run_purpose`, `profile`, `model_tag`, `backend`
      - `top1_accuracy`, `top3_accuracy` — on **successful** parses only
      - `top1_accuracy_all`, `top3_accuracy_all` — over **all** profile images
      - `parse_failure_count`, `misclassification_count`, `failure_count`
@@ -40,5 +40,5 @@ Triage an Oxford 102 eval report and suggest what to fix next.
    - For deep root-cause analysis, use the project's Opik diagnose/explain skills when installed — do not duplicate their logic here
 
 6. **Output**
-   - Cite the report file path
+   - Cite `run_purpose`, manifest path, and report file path
    - Keep the summary actionable: which species/images failed and what to inspect first

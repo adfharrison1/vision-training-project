@@ -34,11 +34,11 @@ Ground truth eval (not runtime): `uv run python -m eval.check_ground_truth data/
 **Oxford 102 eval profiles** (needs `data/flowers/` with `setid.mat`; default backend **`vlm-cloud`**, set `PLANT_ID_VLM_CLOUD_*`):
 
 ```bash
-uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check   # 4 images
-uv run python -m eval.run_oxford102 --backend vlm --eval-run-id local-smoke      # local Ollama parity
+uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check --run-purpose "smoke check"   # 4 images
+uv run python -m eval.run_oxford102 --backend vlm --eval-run-id local-smoke --run-purpose "local Ollama parity"      # local Ollama parity
 ```
 
-Improvement loop: run eval → read `artifacts/eval/*.json` failures → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
+Improvement loop: run eval → read `eval_runs/index.json` and run reports → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id` and `--run-purpose`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
 
 ## Agent commands
 
@@ -79,7 +79,7 @@ Run `uv run lint-imports` after changing imports.
 Defined in `src/plant_id/domain/repositories.py`:
 
 - **`IdentificationRepository`** — `identify(observation) -> (ObservationResult, raw dict)`; backends: `vlm` (Ollama), `vlm-cloud` (OpenAI-compatible API), `classical` stub
-- **`ArtifactRepository`** — persist run JSON under `artifacts/`
+- **`ArtifactRepository`** — persist run JSON under `identify_artifacts/` (CLI) or eval run `artifacts/` dir (eval-only override)
 - **`SpeciesCatalogRepository`** — closed-set label list for prompts
 
 **Use case** (`IdentifyPlantUseCase`) depends only on `IdentificationRepository` + `ArtifactRepository`. It does **not** receive the species catalog.
