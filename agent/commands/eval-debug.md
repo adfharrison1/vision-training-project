@@ -6,7 +6,7 @@ category: "Workflow"
 
 Debug Oxford 102 eval failures using the aggregate report, split accuracy metrics, and per-image forensics JSON.
 
-**Input**: Optional `eval-run-id` slug (e.g. `yellow16-no-reason`). If omitted, use the newest entry in `eval_runs/index.json` (or newest `eval_runs/*/eval/report.json` by mtime).
+**Input**: Optional `eval-run-id` slug (e.g. `yellow16-no-reason`). If omitted, use the newest entry in `eval_runs/full_identify/index.json` (or newest report under that tree by mtime).
 
 **When to use**
 
@@ -16,7 +16,7 @@ Debug Oxford 102 eval failures using the aggregate report, split accuracy metric
 
 **Step 1 — Load the report**
 
-Open `eval_runs/<eval-run-id>/eval/report.json` and read `eval_runs/<eval-run-id>/manifest.json` for `run_purpose`:
+Open `eval_runs/full_identify/<eval-run-id>/eval/report.json` and read `eval_runs/full_identify/<eval-run-id>/manifest.json` for `run_purpose`:
 
 | Field | Meaning |
 |---|---|
@@ -31,6 +31,7 @@ Open `eval_runs/<eval-run-id>/eval/report.json` and read `eval_runs/<eval-run-id
 | `failure_artifacts_dir` | Forensics JSON for **every** benchmark miss |
 | `failures[]` | Same set as benchmark misses: parse (`error`) or misclass (`error` null) |
 | `inference` | Backend, model, prompt_version, token totals |
+| `retrieval` / `retrieval_observations[]` | Optional retrieval scoring on the same profile — **read each observation row first**, then macro `retrieval.recall_at_k` / `mrr` (see `/retrieval-triage`) |
 
 Always quote **both** `(success)` and `(all)` top-1 when summarizing — a run can show high `(success)` with a poor `(all)` when parse failures happened.
 
@@ -50,7 +51,7 @@ Use `failures[]` (or `benchmark_misses` breakdown):
 For **each** row in `failures[]`, open:
 
 ```text
-eval_runs/<eval-run-id>/eval/failures/<image_stem>.json
+eval_runs/full_identify/<eval-run-id>/eval/failures/<image_stem>.json
 ```
 
 Each file includes:
@@ -97,3 +98,4 @@ Suggest a new `--eval-run-id`, `--run-purpose`, and the same `--profile` unless 
 
 - `/eval-run` — start a run
 - `/eval-triage` — quick summary and improvement-loop pointer (use `/eval-debug` for forensics)
+- `/retrieval-triage`, `/retrieval-debug` — per-image retrieval analysis before macro metrics

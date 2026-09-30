@@ -24,6 +24,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `mixed16` | 16 | All rows from `eval/profiles/mixed16.yaml` — 2 regression images + 14 fresh species |
 | `yellow16` | 16 | All rows from `eval/profiles/yellow16.yaml` — 10 yellow-forward species + 6 contrast rows |
 | `curated48` | 48 | Full **yellow16** core + mixed16 extensions + 20 stratified species (`curated48.yaml`) |
+| `bolero_and_canterbury` | 2 | Pilot pair with sheets today (`bolero_and_canterbury.yaml`) — quick retrieval / embedding iteration |
 | `primula_repeat10` | 10 | `eval/profiles/primula_repeat10.yaml` — `image_03641.jpg` × 10 |
 | `english_marigold_repeat10` | 10 | `eval/profiles/english_marigold_repeat10.yaml` — `image_05147.jpg` × 10 |
 | `full` | 6,149 | All test-split images |
@@ -34,10 +35,10 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `--profile` | `quick` | `smoke`, `quick`, `mixed16`, `yellow16`, `curated48`, `primula_repeat10`, `english_marigold_repeat10`, or `full` |
+| `--profile` | `quick` | … plus `bolero_and_canterbury` (2-image pilot); see table above |
 | `--eval-run-id` | timestamp slug | Correlates report + Opik traces |
 | `--run-purpose` | *(required)* | Human-readable reason for this eval |
-| `--force` | off | Reuse an existing `eval_runs/<id>/` directory |
+| `--force` | off | Reuse an existing `eval_runs/full_identify/<id>/` directory |
 | `--backend` | `vlm-cloud` | Composition backend (`vlm`, `vlm-cloud`, `classical`); use `--backend vlm` for local Ollama |
 | `--think` / `--no-think` | `false` (or `PLANT_ID_OLLAMA_THINK`) | Enable Ollama thinking mode for this eval run |
 | `--split` | `test` | Oxford split (`train`, `validation`, `test`) |
@@ -46,7 +47,7 @@ uv run python -m eval.run_oxford102 --profile full --eval-run-id full-benchmark
 | `--quiet` / `--no-quiet` | quiet on | Suppress stderr progress |
 | `--dataset-root` | `data/flowers` | Oxford 102 root |
 | `--profile-manifest` | auto | YAML species/image pairs for smoke and quick |
-| `--output` | auto | Report path (default: `eval_runs/<id>/eval/report.json`) |
+| `--output` | auto | Report path (default: `eval_runs/full_identify/<id>/eval/report.json`) |
 | `--plantnet-baseline` | off | Optional Pl@ntNet comparison |
 
 ## Single-image ground truth
@@ -85,9 +86,30 @@ Eval reports include **split accuracy** and a single **benchmark miss** notion f
 | `failure_count` | Parse errors only (same as `parse_failure_count`) — **not** `len(failures[])` |
 | `success_count` | Valid parses — **not** “all labels correct” |
 
-When any benchmark miss occurs, stderr prints `Failure forensics: eval_runs/<eval-run-id>/eval/failures/` and a summary line `benchmark_misses=N (parse=… misclass=…) parsed_ok=…`.
+When any benchmark miss occurs, stderr prints `Failure forensics: eval_runs/full_identify/<eval-run-id>/eval/failures/` and a summary line `benchmark_misses=N (parse=… misclass=…) parsed_ok=…`.
 
 Each forensics JSON (`eval/failures/<image_stem>.json`) is written for **parse failures and misclassifications**, with `failure_kind`, ground truth, trace id, and (when available) `model.message_content` / truncated reasoning. Use agent command **`/eval-debug`** for a structured post-mortem workflow.
+
+**Eval run layout**
+
+```text
+eval_runs/
+├── full_identify/              # run_oxford102 bundles + index.json
+│   ├── index.json
+│   └── <eval-run-id>/…
+├── rag_retrieval_only/         # run_retrieval_eval bundles + index.json
+│   ├── index.json
+│   └── <eval-run-id>/…
+└── _legacy_flat_index.json     # optional archive after reorganize_eval_run_layout
+```
+
+Do **not** add new runs as flat `eval_runs/<id>/`. One-time move for old trees:
+
+```bash
+uv run python -m eval.reorganize_eval_run_layout
+```
+
+Full identify reports keep all existing identify fields unchanged and add a **`retrieval`** block (Recall@K, MRR, backend, whether RAG was enabled for identify) plus `retrieval_observations[]` / `retrieval_failures[]`.
 
 **Backfill forensics** for a run that already has `eval/report.json` and identify artifacts but predates misclass forensics:
 
@@ -132,10 +154,10 @@ Optional **`describe-hybrid`** (VLM describe + BM25 + text embed) is a compariso
 
 ```bash
 uv run python -m eval.run_retrieval_eval \
-  --profile curated48 \
+  --profile bolero_and_canterbury \
   --retrieval-backend nemotron-prototype \
-  --eval-run-id retrieval-curated48 \
-  --run-purpose "nemotron baseline"
+  --eval-run-id retrieval-bolero-canterbury \
+  --run-purpose "pilot pair retrieval check"
 ```
 
 | Flag | Default | Purpose |
@@ -143,7 +165,7 @@ uv run python -m eval.run_retrieval_eval \
 | `--retrieval-backend` | `nemotron-prototype` | `nemotron-prototype` (OpenRouter + Qdrant) or `describe-hybrid` |
 | `--top-k` | settings | Recall cutoff and artifact depth |
 
-Artifacts mirror identify eval layout: `eval_runs/<id>/manifest.json`, `eval/report.json`, `artifacts/`, `eval/failures/` on misses.
+Artifacts mirror identify eval layout under **`eval_runs/rag_retrieval_only/<id>/`**: `manifest.json`, `eval/report.json`, `artifacts/`, `eval/failures/` on misses. Reports use `run_type: rag_retrieval_only` with a **`retrieval`** metrics block (no VLM `top1_accuracy_all` aliases).
 
 **Corpus workflow**
 

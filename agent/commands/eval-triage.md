@@ -6,13 +6,13 @@ category: "Workflow"
 
 Triage an Oxford 102 eval report and suggest what to fix next.
 
-**Input**: Optional `eval-run-id` slug (e.g. `prompt-v1-baseline`). If omitted, use the newest entry in `eval_runs/index.json` (or the newest `eval_runs/*/eval/report.json` by mtime if the index is missing).
+**Input**: Optional `eval-run-id` slug (e.g. `prompt-v1-baseline`). If omitted, use the newest entry in `eval_runs/full_identify/index.json` (or the newest report under that tree if the index is missing).
 
 **Steps**
 
 1. **Locate report**
-   - If an id was provided, open `eval_runs/<eval-run-id>/eval/report.json` (and `eval_runs/<eval-run-id>/manifest.json` for `run_purpose`)
-   - Else read `eval_runs/index.json` and pick the first entry, or scan for the newest report
+   - If an id was provided, open `eval_runs/full_identify/<eval-run-id>/eval/report.json` (and `eval_runs/full_identify/<eval-run-id>/manifest.json` for `run_purpose`)
+   - Else read `eval_runs/full_identify/index.json` and pick the first entry, or scan for the newest report
    - If none exist, tell the user to run `/eval-run` first
 
 2. **Read and summarize**
@@ -28,6 +28,7 @@ Triage an Oxford 102 eval report and suggest what to fix next.
      - `failures[]`: canonical triage list (`error` set → parse; else wrong top-1)
      - `observations[]`: per-row `top1_match`, `top3_match`, `trace_id`, `predictions`
      - `per_class`: breakdown by species
+     - **Retrieval (if present):** analyze **`retrieval_observations[]` per image before** `retrieval.recall_at_k` / `retrieval.mrr`; macro metrics are run averages, not substitutes for per-query ranks
    - Lead the summary with **benchmark misses** and list every row in `failures[]`, grouped parse vs misclass
    - Then show split metrics `(success)` vs `(all)` for context
 

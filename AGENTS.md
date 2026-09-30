@@ -38,7 +38,7 @@ uv run python -m eval.run_oxford102 --profile smoke --eval-run-id smoke-check --
 uv run python -m eval.run_oxford102 --backend vlm --eval-run-id local-smoke --run-purpose "local Ollama parity"      # local Ollama parity
 ```
 
-Improvement loop: run eval → read `eval_runs/index.json` and run reports → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id` and `--run-purpose`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
+Improvement loop: run eval → read `eval_runs/full_identify/index.json` (or `rag_retrieval_only/index.json` for retrieval-only) and run reports → Opik MCP/UI trace diagnosis → change one variable → re-run same profile with new `--eval-run-id` and `--run-purpose`. Enable tracing with `PLANT_ID_OPIK_ENABLED=true`.
 
 ## Agent commands
 
