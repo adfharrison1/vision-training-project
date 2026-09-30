@@ -13,6 +13,8 @@ dependencies = [
     "pydantic==2.13.5",
     "pydantic-settings==2.13.0",
     "pyyaml==6.0.3",
+    "qdrant-client>=1.12.0",
+    "rank-bm25>=0.2.2",
     "rich==14.3.2",
     "scipy==1.18.1",
 ]
@@ -46,5 +48,5 @@ select = ["E", "F", "I", "UP"]
 pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
-    "integration: tests requiring live Ollama",
+    "integration: tests requiring live Ollama, Qdrant, or other local services",
 ]
