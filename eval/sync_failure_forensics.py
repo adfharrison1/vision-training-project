@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from eval.eval_run_roots import FULL_IDENTIFY_SUBDIR, resolve_eval_run_paths
 from eval.failure_forensics import ensure_eval_failure_forensics
 from eval.metrics import ObservationResultRow
 from eval.run_registry import eval_run_paths
@@ -45,8 +46,12 @@ def sync_failure_forensics(
     *,
     eval_runs_root: Path | None = None,
 ) -> int:
-    root = eval_runs_root or load_settings().eval_runs_dir
-    paths = eval_run_paths(root, eval_run_id)
+    settings = load_settings()
+    root = eval_runs_root
+    if root is None:
+        paths = resolve_eval_run_paths(settings, eval_run_id, prefer=FULL_IDENTIFY_SUBDIR)
+    else:
+        paths = eval_run_paths(root, eval_run_id)
     if not paths.report_path.is_file():
         print(f"Report not found: {paths.report_path}", file=sys.stderr)
         return 1
@@ -56,7 +61,7 @@ def sync_failure_forensics(
         eval_run_id=eval_run_id,
         rows=rows,
         artifacts_dir=paths.artifacts_dir,
-        eval_runs_root=root,
+        eval_runs_root=paths.run_dir.parent,
     )
     failures_dir = paths.failures_dir
     count = len(list(failures_dir.glob("*.json"))) if failures_dir.is_dir() else 0

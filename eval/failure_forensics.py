@@ -86,9 +86,14 @@ def eval_failures_dir(
     *,
     eval_runs_root: Path | None = None,
 ) -> Path:
+    from eval.eval_run_roots import full_identify_eval_runs_root
     from eval.run_registry import eval_run_paths
+    from plant_id.interfaces.composition import load_settings
 
-    root = eval_runs_root or Path("eval_runs")
+    if eval_runs_root is None:
+        root = full_identify_eval_runs_root(load_settings())
+    else:
+        root = eval_runs_root
     return eval_run_paths(root, eval_run_id).failures_dir
 
 

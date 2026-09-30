@@ -87,6 +87,9 @@ class EvalRunManifest(BaseModel):
     parse_failure_count: int = 0
     misclassification_count: int = 0
     partial: bool = False
+    run_type: str = "full_identify"
+    retrieval_recall_at_1: float | None = None
+    retrieval_mrr: float | None = None
 
 
 class EvalRunIndexEntry(BaseModel):
@@ -102,6 +105,9 @@ class EvalRunIndexEntry(BaseModel):
     top1_accuracy_all: float = 0.0
     observation_count: int = 0
     git_commit: str | None = None
+    run_type: str = "full_identify"
+    retrieval_recall_at_1: float | None = None
+    retrieval_mrr: float | None = None
 
 
 class EvalRunIndex(BaseModel):
@@ -115,6 +121,10 @@ def _relative_path(path: Path, base: Path) -> str:
         return str(path.relative_to(base))
     except ValueError:
         return str(path)
+
+
+def relative_eval_run_path(path: Path, eval_runs_root: Path) -> str:
+    return _relative_path(path, eval_runs_root)
 
 
 def write_manifest(
@@ -165,6 +175,20 @@ def manifest_from_report(
     git_commit: str | None,
     report_payload: dict[str, Any],
 ) -> EvalRunManifest:
+    run_type = str(report_payload.get("run_type", "full_identify"))
+    retrieval_block = report_payload.get("retrieval") or {}
+    retrieval_recall_at_1: float | None = None
+    retrieval_mrr: float | None = None
+    if isinstance(retrieval_block, dict):
+        recall_map = retrieval_block.get("recall_at_k") or {}
+        if isinstance(recall_map, dict) and recall_map:
+            if "1" in recall_map:
+                retrieval_recall_at_1 = float(recall_map["1"])
+            elif 1 in recall_map:
+                retrieval_recall_at_1 = float(recall_map[1])
+        if retrieval_block.get("mrr") is not None:
+            retrieval_mrr = float(retrieval_block["mrr"])
+
     return EvalRunManifest(
         eval_run_id=str(report_payload["eval_run_id"]),
         run_purpose=run_purpose,
@@ -186,6 +210,9 @@ def manifest_from_report(
         parse_failure_count=int(report_payload.get("parse_failure_count", 0)),
         misclassification_count=int(report_payload.get("misclassification_count", 0)),
         partial=bool(report_payload.get("partial", False)),
+        run_type=run_type,
+        retrieval_recall_at_1=retrieval_recall_at_1,
+        retrieval_mrr=retrieval_mrr,
     )
 
 
@@ -201,7 +228,31 @@ def index_entry_from_manifest(manifest: EvalRunManifest) -> EvalRunIndexEntry:
         top1_accuracy_all=manifest.top1_accuracy_all,
         observation_count=manifest.observation_count,
         git_commit=manifest.git_commit,
+        run_type=manifest.run_type,
+        retrieval_recall_at_1=manifest.retrieval_recall_at_1,
+        retrieval_mrr=manifest.retrieval_mrr,
     )
+
+
+def rebuild_eval_run_index(eval_runs_root: Path) -> int:
+    """Rewrite ``index.json`` from all ``*/manifest.json`` under *eval_runs_root*."""
+    entries: list[EvalRunIndexEntry] = []
+    for manifest_path in sorted(eval_runs_root.glob("*/manifest.json")):
+        try:
+            manifest = EvalRunManifest.model_validate_json(
+                manifest_path.read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError):
+            continue
+        entries.append(index_entry_from_manifest(manifest))
+    eval_runs_root.mkdir(parents=True, exist_ok=True)
+    entries.sort(key=lambda entry: entry.finished_at, reverse=True)
+    index_path = eval_runs_root / "index.json"
+    index_path.write_text(
+        EvalRunIndex(runs=entries).model_dump_json(indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return len(entries)
 
 
 def utc_now_iso() -> str:
