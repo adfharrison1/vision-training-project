@@ -100,6 +100,14 @@ def test_english_marigold_repeat10_manifest_has_ten_rows() -> None:
     assert all(row.image_name == "image_05147.jpg" for row in rows)
 
 
+def test_bolero_and_canterbury_profile_is_two_image_pilot() -> None:
+    manifest = load_profile_manifest(Path("eval/profiles/bolero_and_canterbury.yaml"))
+    rows = select_manifest_observations(manifest, "bolero_and_canterbury")
+
+    assert len(rows) == 2
+    assert {row.species for row in rows} == {"canterbury bells", "bolero deep blue"}
+
+
 def test_validate_manifest_rejects_species_image_mismatch() -> None:
     from eval.dataset import default_dataset_root, load_oxford_splits, split_image_indices
     from eval.profile_manifest import ProfileObservationSpec, validate_manifest_against_dataset

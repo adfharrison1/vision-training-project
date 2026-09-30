@@ -33,6 +33,7 @@ class EvalProfile(StrEnum):
     PRIMULA_REPEAT10 = "primula_repeat10"
     ENGLISH_MARIGOLD_REPEAT10 = "english_marigold_repeat10"
     CURATED48 = "curated48"
+    BOLERO_AND_CANTERBURY = "bolero_and_canterbury"
     FULL = "full"
 
 
@@ -44,6 +45,7 @@ PROFILE_SIZES: dict[EvalProfile, int | None] = {
     EvalProfile.PRIMULA_REPEAT10: 10,
     EvalProfile.ENGLISH_MARIGOLD_REPEAT10: 10,
     EvalProfile.CURATED48: 48,
+    EvalProfile.BOLERO_AND_CANTERBURY: 2,
     EvalProfile.FULL: None,
 }
 

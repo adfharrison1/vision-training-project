@@ -1,0 +1,8 @@
+# Pilot pair: only the two campanula species we currently have sheets + Qdrant prototypes for.
+# Handy for quick retrieval checks and embedding/index tweaks — not a long-lived "profile product".
+
+observations:
+  - species: canterbury bells
+    image: image_06613.jpg
+  - species: bolero deep blue
+    image: image_07123.jpg

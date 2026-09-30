@@ -21,6 +21,7 @@ PROFILE_OBSERVATION_COUNTS = {
     "primula_repeat10": 10,
     "english_marigold_repeat10": 10,
     "curated48": 48,
+    "bolero_and_canterbury": 2,
 }
 
 PROFILE_MANIFEST_FILES = {
@@ -31,6 +32,7 @@ PROFILE_MANIFEST_FILES = {
     "primula_repeat10": "primula_repeat10.yaml",
     "english_marigold_repeat10": "english_marigold_repeat10.yaml",
     "curated48": "curated48.yaml",
+    "bolero_and_canterbury": "bolero_and_canterbury.yaml",
 }
 
 
