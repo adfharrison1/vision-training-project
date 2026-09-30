@@ -1,0 +1,15 @@
+catalog_label: bolero deep blue
+retrieval_text: |
+  Campanula medium cultivar with compact, upright habit and deep violet-blue
+  bell-shaped flowers. Corolla is broadly campanulate with five fused petals,
+  often showing lighter or white throats. Blooms are arranged along stiff stems
+  rather than in a single dense spike. Leaves are narrow, toothed, and mostly
+  basal with smaller stem leaves.
+context_block: |
+  Versus canterbury bells: bolero deep blue is a named cultivar with deeper,
+  more saturated violet-blue bells on shorter, bushier plants. Canterbury bells
+  form taller spikes of larger, paler blue to purple bells with a more open
+  funnel shape.
+provenance:
+  authored_by: human
+  prompt_version: sheet-pilot-v1
