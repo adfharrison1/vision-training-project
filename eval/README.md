@@ -122,6 +122,50 @@ uv run python -m eval.run_oxford102 --plantnet-baseline --eval-run-id prompt-v1
 
 Label matching uses **exact catalog string equality** — Pl@ntNet scientific names usually will not match Oxford common names unless they appear verbatim in the catalog.
 
+## Species retrieval eval
+
+Retrieval-only runs measure **Recall@K** and **MRR** (ground-truth `catalog_label` in top-K) without calling identify.
+
+**Primary path:** OpenRouter embeddings → `eval.build_retrieval_index` → Qdrant seed → `--retrieval-backend nemotron-prototype`.
+
+Optional **`describe-hybrid`** (VLM describe + BM25 + text embed) is a comparison backend without Qdrant prototype search.
+
+```bash
+uv run python -m eval.run_retrieval_eval \
+  --profile curated48 \
+  --retrieval-backend nemotron-prototype \
+  --eval-run-id retrieval-curated48 \
+  --run-purpose "nemotron baseline"
+```
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--retrieval-backend` | `nemotron-prototype` | `nemotron-prototype` (OpenRouter + Qdrant) or `describe-hybrid` |
+| `--top-k` | settings | Recall cutoff and artifact depth |
+
+Artifacts mirror identify eval layout: `eval_runs/<id>/manifest.json`, `eval/report.json`, `artifacts/`, `eval/failures/` on misses.
+
+**Corpus workflow**
+
+```bash
+uv run python -m eval.validate_species_sheets
+uv run python -m eval.synthesize_species_sheet --species "bolero deep blue" --images img1.jpg img2.jpg --out resources/species_sheets/bolero_deep_blue.yaml
+# Requires PLANT_ID_VLM_OPENROUTER_API_KEY (OpenRouter Nemotron multimodal embeddings)
+uv run python -m eval.build_retrieval_index
+./scripts/qdrant.sh seed
+```
+
+See `resources/species_sheets/README.md` and `docker/qdrant/README.md`.
+
+**RAG A/B on identify eval**
+
+```bash
+uv run python -m eval.run_oxford102 --profile smoke --run-purpose "RAG off" --no-rag --eval-run-id rag-off
+uv run python -m eval.run_oxford102 --profile smoke --run-purpose "RAG on" --rag --eval-run-id rag-on
+```
+
+Requires `PLANT_ID_RAG_ENABLED` or `--rag` / `--no-rag` and a seeded OpenRouter index for `nemotron-prototype` RAG.
+
 ## Dataset layout
 
 ```text

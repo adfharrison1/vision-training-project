@@ -13,6 +13,7 @@ Run these commands from the project root:
 ```bash
 uv sync
 uv run plant-id verify-env
+uv run plant-id verify-env --backend species-sheets
 uv run ruff check .
 uv run lint-imports
 uv run pytest

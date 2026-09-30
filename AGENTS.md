@@ -49,10 +49,15 @@ Canonical slash-command prompts live in **`agent/commands/`** (agent-agnostic). 
 | `/eval-run` | Start Oxford 102 eval (default profile `quick`; background run) |
 | `/eval-triage` | Summarize benchmark misses (`failures[]`) and next steps |
 | `/eval-debug` | Post-mortem all benchmark misses (forensics under `eval/failures/`) |
+| `/retrieval-run` | Start retrieval-only eval (`run_retrieval_eval`) |
+| `/retrieval-triage` | Summarize retrieval Recall@K misses |
+| `/retrieval-debug` | Post-mortem retrieval failures under `eval/failures/` |
 | `/verify` | Post-change loop: sync, verify-env, ruff, lint-imports, pytest |
 | `/opik-up` | Start/check local Opik via `./scripts/opik.sh` |
 | `/identify` | Ad-hoc VLM identify on absolute photo path(s) |
 | `/demo` | Bundled sample identify demo |
+
+**Species retrieval (optional):** OpenRouter embeddings (`PLANT_ID_VLM_OPENROUTER_API_KEY`) → `eval.build_retrieval_index` → `./scripts/qdrant.sh seed` → `--retrieval-backend nemotron-prototype`. Optional `describe-hybrid` compares without Qdrant prototypes.
 
 ## Layer rules (enforced by `.importlinter`)
 

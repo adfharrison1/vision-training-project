@@ -40,6 +40,8 @@ Add `--quiet` to hide progress on stderr. Results go to stdout; artifacts to `id
 |---|---|
 | `plant-id verify-env` | Check Ollama is up and the vision model is installed |
 | `plant-id verify-env --backend vlm-cloud` | Check cloud VLM env vars are set |
+| `plant-id verify-env --backend species-sheets` | Validate committed species sheet YAML |
+| `plant-id verify-env --backend retrieval` | Check Qdrant and collection after seed |
 | `plant-id demo --backend vlm` | Identify the bundled sample image (local Ollama) |
 | `plant-id identify --backend vlm --photos a.jpg` | Identify 1–3 comma-separated photo paths (local) |
 | `plant-id identify --backend vlm-cloud --photos a.jpg` | Same via configured cloud VLM endpoint |
@@ -68,6 +70,13 @@ Environment variables use the `PLANT_ID_` prefix (see `.env` support in settings
 | `OPIK_ENABLED` | `false` | Export Ollama traces to local Opik (self-hosted only) |
 | `OPIK_BASE_URL` | `http://127.0.0.1:5173/api` | Local Opik API URL — do not point at Comet cloud |
 | `OPIK_PROJECT_NAME` | `plant-id` | Opik project for identification traces |
+| `RAG_ENABLED` | `false` | Inject retrieved species context into identify prompt |
+| `RETRIEVAL_BACKEND` | `nemotron-prototype` | `nemotron-prototype` (OpenRouter + Qdrant) or `describe-hybrid` |
+| `VLM_OPENROUTER_API_KEY` | unset | OpenRouter key for Nemotron multimodal embeddings (index build + prototype retrieval) |
+| `RETRIEVAL_EMBED_MODEL` | `nvidia/llama-nemotron-embed-vl-1b-v2:free` | OpenRouter embedding model id |
+| `RETRIEVAL_TOP_K` | `3` | Species sheets retrieved for RAG / eval |
+| `QDRANT_URL` | `http://127.0.0.1:6333` | Local Qdrant HTTP URL |
+| `QDRANT_COLLECTION` | `species_sheets_v1` | Qdrant collection for prototypes |
 
 ## Observability (optional)
 
@@ -214,7 +223,41 @@ export PLANT_ID_OPIK_ENABLED=true
 uv run python -m eval.run_oxford102 --profile smoke --eval-run-id prompt-v1 --run-purpose "smoke with Opik"
 ```
 
-See `eval/README.md` for eval boundary rules and flag reference.
+See `eval/README.md` for eval boundary rules, retrieval eval, and flag reference.
+
+## Species retrieval and RAG (optional)
+
+Git **species sheets** under `resources/species_sheets/` feed a local **Qdrant** index (OpenRouter **Nemotron** multimodal prototypes by default) and optional **RAG** prompt injection.
+
+```bash
+export PLANT_ID_VLM_OPENROUTER_API_KEY=...   # free Nemotron embed model on OpenRouter
+./scripts/qdrant.sh up
+uv run plant-id verify-env --backend species-sheets
+uv run python -m eval.build_retrieval_index   # OpenRouter API; no local torch
+./scripts/qdrant.sh seed
+uv run plant-id verify-env --backend retrieval
+```
+
+**Retrieval-only eval** (no identify call):
+
+```bash
+uv run python -m eval.run_retrieval_eval \
+  --profile curated48 \
+  --retrieval-backend nemotron-prototype \
+  --eval-run-id retrieval-curated48 \
+  --run-purpose "nemotron prototype baseline"
+```
+
+**Identify with RAG** (`PLANT_ID_RAG_ENABLED=true` or per-run):
+
+```bash
+export PLANT_ID_RAG_ENABLED=true
+uv run plant-id identify --backend vlm-cloud --photos /path/to/photo.jpg
+```
+
+Sheet authoring, backends, and ML dependency notes: `resources/species_sheets/README.md` and `eval/README.md`.
+
+**Platform note:** Prototype embeddings use **OpenRouter** only (works on Python 3.14 Intel Mac; no local torch). Optional **`describe-hybrid`** retrieval (BM25 + hashing text embed; no Qdrant) compares against the OpenRouter path. Fireworks `/embeddings` probes live in `eval/probe_fireworks_embeddings.py` (exploratory, not wired).
 
 ### Git commits
 
@@ -243,6 +286,8 @@ Python interpreter: `.venv/bin/python` (created by `uv sync`).
 ```text
 src/plant_id/           application code
 resources/species_catalog/
+resources/species_sheets/   species RAG YAML (git)
+docker/qdrant/              local Qdrant compose
 data/                   downloaded datasets (gitignored)
 eval/                   offline evaluation (not used by the CLI)
 tests/
