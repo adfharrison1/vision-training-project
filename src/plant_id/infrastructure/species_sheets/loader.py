@@ -9,6 +9,8 @@ import yaml
 
 from plant_id.domain.species_retrieval import SpeciesSheet
 
+PROTOTYPES_YAML = "prototypes.yaml"
+
 FORBIDDEN_RETRIEVAL_PATTERNS = (
     re.compile(r"\bin frame\b", re.IGNORECASE),
     re.compile(r"\bphoto(graph)?\b", re.IGNORECASE),
@@ -35,7 +37,11 @@ def list_sheet_paths(sheets_dir: Path | None = None) -> list[Path]:
     directory = sheets_dir or species_sheets_dir()
     if not directory.is_dir():
         return []
-    return sorted(path for path in directory.glob("*.yaml") if path.is_file())
+    return sorted(
+        path
+        for path in directory.glob("*.yaml")
+        if path.is_file() and path.name != PROTOTYPES_YAML
+    )
 
 
 def load_all_sheets(sheets_dir: Path | None = None) -> dict[str, SpeciesSheet]:

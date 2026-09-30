@@ -14,6 +14,7 @@ from eval.retrieval_report import (
     RUN_TYPE_FULL_IDENTIFY,
     RetrievalFailureRow,
     RetrievalObservationReportRow,
+    RetrievalPerClassReportRow,
     RetrievalReportSection,
 )
 
@@ -122,6 +123,7 @@ class EvalReport(BaseModel):
     retrieval: RetrievalReportSection | None = None
     retrieval_observations: list[RetrievalObservationReportRow] | None = None
     retrieval_failures: list[RetrievalFailureRow] | None = None
+    retrieval_per_class: dict[str, RetrievalPerClassReportRow] | None = None
 
 
 def default_report_path(
@@ -178,6 +180,7 @@ def build_report(
     retrieval: RetrievalReportSection | None = None,
     retrieval_observations: list[RetrievalObservationReportRow] | None = None,
     retrieval_failures: list[RetrievalFailureRow] | None = None,
+    retrieval_per_class: dict[str, RetrievalPerClassReportRow] | None = None,
 ) -> EvalReport:
     observations = [_observation_row(row) for row in metrics.observations]
     failures = [
@@ -238,6 +241,7 @@ def build_report(
         retrieval=retrieval,
         retrieval_observations=retrieval_observations,
         retrieval_failures=retrieval_failures,
+        retrieval_per_class=retrieval_per_class,
     )
 
 

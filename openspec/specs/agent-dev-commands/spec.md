@@ -142,6 +142,20 @@ The project SHALL provide a `/demo` slash command for the bundled sample identif
 - **WHEN** a developer invokes `/demo`
 - **THEN** the agent SHALL verify the sample image exists under `data/flowers/jpg/image_00001.jpg` (or document if missing) and run `uv run plant-id demo --backend vlm`
 
+### Requirement: Retrieval eval agent commands with prototype debug
+
+The project SHALL document agent slash commands for retrieval eval such that **retrieval-debug** and **retrieval-triage** workflows inspect per-image observations and prototype-winning metadata before macro Recall@K/MRR, and reference the curated-index rebuild loop when tuning the pilot profile.
+
+#### Scenario: Debug command
+
+- **WHEN** an agent follows retrieval-debug for a run id
+- **THEN** instructions SHALL include reading prototype fields in artifacts/report and comparing to built retrieval index manifest entries
+
+#### Scenario: Index rebuild reminder
+
+- **WHEN** an agent recommends sheet or prototype changes
+- **THEN** commands or eval README links SHALL remind: rebuild retrieval index → Qdrant seed → retrieval eval on profile `bolero_and_canterbury`
+
 ### Requirement: Command catalog documentation
 
 Agent-facing documentation SHALL list domain slash commands separately from OpenSpec commands.

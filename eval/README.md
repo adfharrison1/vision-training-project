@@ -175,7 +175,12 @@ uv run python -m eval.synthesize_species_sheet --species "bolero deep blue" --im
 # Requires PLANT_ID_VLM_OPENROUTER_API_KEY (OpenRouter Nemotron multimodal embeddings)
 uv run python -m eval.build_retrieval_index
 ./scripts/qdrant.sh seed
+uv run python -m eval.inspect_retrieval_index --profile bolero_and_canterbury
+# Optional: compare a test photo against stored vectors (OpenRouter key required)
+uv run python -m eval.inspect_retrieval_index --profile bolero_and_canterbury --query-image /absolute/path/to/image_06613.jpg
 ```
+
+After editing sheets or `resources/species_sheets/prototypes.yaml`, rebuild index → seed → re-run retrieval eval on `bolero_and_canterbury`. Per-image **`retrieval_observations[]`** and **`artifacts/<stem>.json`** include `winning_prototypes` and capped `raw_hits` for prototype-level debugging.
 
 See `resources/species_sheets/README.md` and `docker/qdrant/README.md`.
 

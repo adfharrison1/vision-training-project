@@ -509,12 +509,14 @@ def run_eval(args: argparse.Namespace) -> int:
         artifacts_dir=None,
         failures_dir=None,
     )
-    retrieval_section, retrieval_observations, retrieval_failures = build_retrieval_report_extras(
-        retrieval_metrics,
-        backend=retrieval_backend,
-        model_tag=retrieval_repo.backend_id,
-        top_k=top_k,
-        rag_enabled_for_identify=settings.rag_enabled,
+    retrieval_section, retrieval_observations, retrieval_failures, retrieval_per_class = (
+        build_retrieval_report_extras(
+            retrieval_metrics,
+            backend=retrieval_backend,
+            model_tag=retrieval_repo.backend_id,
+            top_k=top_k,
+            rag_enabled_for_identify=settings.rag_enabled,
+        )
     )
 
     report = build_report(
@@ -538,6 +540,7 @@ def run_eval(args: argparse.Namespace) -> int:
         retrieval=retrieval_section,
         retrieval_observations=retrieval_observations,
         retrieval_failures=retrieval_failures,
+        retrieval_per_class=retrieval_per_class,
     )
     output_path = args.output or paths.report_path
     write_report(report, output_path)

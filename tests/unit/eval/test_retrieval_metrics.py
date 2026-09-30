@@ -5,6 +5,7 @@ from __future__ import annotations
 from eval.retrieval_metrics import (
     RetrievalObservationRow,
     compute_retrieval_metrics,
+    compute_retrieval_per_class,
     recall_at_k,
     reciprocal_rank,
 )
@@ -37,3 +38,28 @@ def test_recall_and_mrr() -> None:
     metrics = compute_retrieval_metrics([row], k_values=(1, 3))
     assert metrics.mrr == 0.5
     assert metrics.recall_at_k[3] == 1.0
+
+
+def test_retrieval_per_class_two_label_pilot() -> None:
+    rows = [
+        RetrievalObservationRow(
+            image="a.jpg",
+            ground_truth="canterbury bells",
+            retrieved_labels=("bolero deep blue",),
+            scores=(0.9,),
+            recall_at_k={1: False, 3: False},
+            reciprocal_rank=0.0,
+        ),
+        RetrievalObservationRow(
+            image="b.jpg",
+            ground_truth="bolero deep blue",
+            retrieved_labels=("bolero deep blue",),
+            scores=(0.95,),
+            recall_at_k={1: True, 3: True},
+            reciprocal_rank=1.0,
+        ),
+    ]
+    per_class = compute_retrieval_per_class(rows, k_values=(1, 3))
+    assert per_class["canterbury bells"].recall_at_k[1] == 0.0
+    assert per_class["bolero deep blue"].recall_at_k[1] == 1.0
+    assert per_class["canterbury bells"].total == 1

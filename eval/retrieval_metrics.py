@@ -6,6 +6,21 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
+class PrototypeHitRow:
+    catalog_label: str
+    prototype_kind: str | None = None
+    prototype_id: str | None = None
+    source_image: str | None = None
+    score: float = 0.0
+
+
+@dataclass(frozen=True)
+class RetrievalPerClassStats:
+    total: int
+    recall_at_k: dict[int, float]
+
+
+@dataclass(frozen=True)
 class RetrievalObservationRow:
     image: str
     ground_truth: str
@@ -14,6 +29,8 @@ class RetrievalObservationRow:
     recall_at_k: dict[int, bool]
     reciprocal_rank: float
     error: str | None = None
+    winning_prototypes: tuple[PrototypeHitRow, ...] = ()
+    raw_hits: tuple[PrototypeHitRow, ...] = ()
 
 
 @dataclass
@@ -68,3 +85,31 @@ def compute_retrieval_metrics(
         observations=rows,
         misses=misses,
     )
+
+
+def compute_retrieval_per_class(
+    rows: list[RetrievalObservationRow],
+    *,
+    k_values: tuple[int, ...] = (1, 3, 5),
+) -> dict[str, RetrievalPerClassStats]:
+    totals: dict[str, dict[int, int]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        if row.error is not None:
+            continue
+        label = row.ground_truth
+        counts[label] = counts.get(label, 0) + 1
+        bucket = totals.setdefault(label, {k: 0 for k in k_values})
+        for k in k_values:
+            if row.recall_at_k.get(k, False):
+                bucket[k] += 1
+    per_class: dict[str, RetrievalPerClassStats] = {}
+    for label, total in counts.items():
+        hits = totals[label]
+        per_class[label] = RetrievalPerClassStats(
+            total=total,
+            recall_at_k={
+                k: (hits[k] / total if total else 0.0) for k in k_values
+            },
+        )
+    return per_class

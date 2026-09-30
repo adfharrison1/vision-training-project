@@ -11,6 +11,7 @@ from plant_id.domain.species_retrieval import RetrievedSpeciesContext
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.retrieval.in_memory_store import InMemoryVectorStore
 from plant_id.infrastructure.retrieval.index_manifest import (
+    IndexPoint,
     load_manifest,
     load_vectors,
     manifest_embed_model,
@@ -52,20 +53,42 @@ class NemotronPrototypeRetrievalRepository:
             best_hits.extend(self._search(query, limit))
         return aggregate_max_per_label(best_hits, k=k)
 
+    def retrieve_for_eval(
+        self,
+        photo_paths: tuple[Path, ...],
+        k: int,
+        *,
+        raw_hit_cap: int = 10,
+    ) -> tuple[tuple[RetrievedSpeciesContext, ...], list[tuple[dict, float]]]:
+        """Same as retrieve but also return merged raw hits for eval debug artifacts."""
+        if k < 1:
+            raise ValueError("k must be at least 1.")
+        limit = max(k * self._settings.retrieval_search_multiplier, k)
+        best_hits: list[tuple[dict, float]] = []
+        for path in photo_paths:
+            query = embed_image_path(self._settings, path)
+            best_hits.extend(self._search(query, limit))
+        contexts = aggregate_max_per_label(best_hits, k=k)
+        return contexts, best_hits
+
     def _search(self, query_vector: np.ndarray, limit: int) -> list[tuple[dict, float]]:
         if isinstance(self._store, InMemoryVectorStore):
             scored = self._store.search(query_vector, limit)
-            hits: list[tuple[dict, float]] = []
-            for item in scored:
-                point = item.point
-                payload = {
-                    "catalog_label": point.catalog_label,
-                    "context_block": point.context_block,
-                    "retrieval_text": point.retrieval_text,
-                }
-                hits.append((payload, item.score))
-            return hits
+            return [(payload_from_index_point(item.point), item.score) for item in scored]
         return self._store.search(query_vector, limit)
+
+
+def payload_from_index_point(point: IndexPoint) -> dict:
+    payload: dict = {
+        "catalog_label": point.catalog_label,
+        "prototype_kind": point.prototype_kind,
+        "prototype_id": point.prototype_id,
+        "context_block": point.context_block,
+        "retrieval_text": point.retrieval_text,
+    }
+    if point.source_image is not None:
+        payload["source_image"] = point.source_image
+    return payload
 
 
 def build_in_memory_nemotron_repo(settings: Settings) -> NemotronPrototypeRetrievalRepository:

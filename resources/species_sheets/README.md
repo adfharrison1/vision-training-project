@@ -14,6 +14,10 @@ Each file is one species. Required fields:
 
 Optional `provenance` records authoring metadata (`authored_by`, `source_images`, `prompt_version`).
 
+## Curated train prototypes (`prototypes.yaml`)
+
+Optional YAML map at `resources/species_sheets/prototypes.yaml`: `catalog_label` → list of Oxford **train** image filenames (e.g. `image_01234.jpg`). When present for a species, `eval.build_retrieval_index` uses those images instead of the first-N train scan. Paths are validated against the train split and ground-truth label at index build time. Omit the file or leave labels unset to keep automatic train selection.
+
 ## Authoring rules
 
 - Describe the **plant**, not a photograph: no “in frame”, dataset names, or image ids in `retrieval_text`.

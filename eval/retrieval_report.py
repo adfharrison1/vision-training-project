@@ -6,7 +6,12 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from eval.retrieval_metrics import RetrievalMetrics, RetrievalObservationRow
+from eval.retrieval_metrics import (
+    RetrievalMetrics,
+    RetrievalObservationRow,
+    RetrievalPerClassStats,
+    compute_retrieval_per_class,
+)
 
 RUN_TYPE_FULL_IDENTIFY = "full_identify"
 RUN_TYPE_RAG_RETRIEVAL_ONLY = "rag_retrieval_only"
@@ -23,6 +28,23 @@ class RetrievalReportSection(BaseModel):
     rag_enabled_for_identify: bool | None = None
 
 
+class PrototypeHitReportRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    catalog_label: str
+    prototype_kind: str | None = None
+    prototype_id: str | None = None
+    source_image: str | None = None
+    score: float = 0.0
+
+
+class RetrievalPerClassReportRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    total: int
+    recall_at_k: dict[int, float]
+
+
 class RetrievalObservationReportRow(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -33,6 +55,8 @@ class RetrievalObservationReportRow(BaseModel):
     recall_at_k: dict[int, bool]
     reciprocal_rank: float
     error: str | None = None
+    winning_prototypes: tuple[PrototypeHitReportRow, ...] = ()
+    raw_hits: tuple[PrototypeHitReportRow, ...] = ()
 
 
 class RetrievalFailureRow(BaseModel):
@@ -64,7 +88,18 @@ class RetrievalOnlyEvalReport(BaseModel):
     generated_at: str
     retrieval: RetrievalReportSection
     retrieval_observations: list[RetrievalObservationReportRow] = Field(default_factory=list)
+    retrieval_per_class: dict[str, RetrievalPerClassReportRow] = Field(default_factory=dict)
     failures: list[RetrievalFailureRow] = Field(default_factory=list)
+
+
+def _prototype_hit_row(row) -> PrototypeHitReportRow:
+    return PrototypeHitReportRow(
+        catalog_label=row.catalog_label,
+        prototype_kind=row.prototype_kind,
+        prototype_id=row.prototype_id,
+        source_image=row.source_image,
+        score=row.score,
+    )
 
 
 def _observation_report_row(row: RetrievalObservationRow) -> RetrievalObservationReportRow:
@@ -76,7 +111,18 @@ def _observation_report_row(row: RetrievalObservationRow) -> RetrievalObservatio
         recall_at_k=row.recall_at_k,
         reciprocal_rank=row.reciprocal_rank,
         error=row.error,
+        winning_prototypes=tuple(_prototype_hit_row(hit) for hit in row.winning_prototypes),
+        raw_hits=tuple(_prototype_hit_row(hit) for hit in row.raw_hits),
     )
+
+
+def _per_class_report(
+    stats: dict[str, RetrievalPerClassStats],
+) -> dict[str, RetrievalPerClassReportRow]:
+    return {
+        label: RetrievalPerClassReportRow(total=entry.total, recall_at_k=entry.recall_at_k)
+        for label, entry in stats.items()
+    }
 
 
 def _failure_row(row: RetrievalObservationRow) -> RetrievalFailureRow:
@@ -117,6 +163,7 @@ def build_retrieval_report_extras(
     RetrievalReportSection,
     list[RetrievalObservationReportRow],
     list[RetrievalFailureRow],
+    dict[str, RetrievalPerClassReportRow],
 ]:
     section = build_retrieval_section(
         metrics,
@@ -130,7 +177,8 @@ def build_retrieval_report_extras(
     for row in metrics.observations:
         if row.error is not None:
             failures.append(_failure_row(row))
-    return section, observations, failures
+    per_class = _per_class_report(compute_retrieval_per_class(metrics.observations))
+    return section, observations, failures, per_class
 
 
 def build_retrieval_only_report(
@@ -146,7 +194,7 @@ def build_retrieval_only_report(
     top_k: int,
     partial: bool = False,
 ) -> RetrievalOnlyEvalReport:
-    section, observations, failures = build_retrieval_report_extras(
+    section, observations, failures, per_class = build_retrieval_report_extras(
         metrics,
         backend=backend,
         model_tag=model_tag,
@@ -167,6 +215,7 @@ def build_retrieval_only_report(
         generated_at=datetime.now(tz=UTC).isoformat(),
         retrieval=section,
         retrieval_observations=observations,
+        retrieval_per_class=per_class,
         failures=failures,
     )
 

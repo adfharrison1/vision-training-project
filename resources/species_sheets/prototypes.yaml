@@ -1,0 +1,4 @@
+# Optional curated Oxford 102 *train* image filenames per catalog_label.
+# When a label is listed below, index build uses those images instead of the
+# first-N train scan. See resources/species_sheets/README.md.
+{}

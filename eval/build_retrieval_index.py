@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from eval.oxford_train_prototypes import assert_not_test_split, train_image_paths_for_label
+from eval.prototype_curation import load_prototype_curation, resolve_curated_train_paths
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.retrieval.index_manifest import (
     IndexPoint,
@@ -55,6 +56,7 @@ def build_index(
     sheets = load_all_sheets(settings.species_sheets_dir)
     catalog = FileSpeciesCatalog(settings.species_catalog_path)
     class_names = catalog.list_class_names()
+    curation = load_prototype_curation(settings.species_sheets_dir)
     points: list[IndexPoint] = []
     vectors: list[np.ndarray] = []
 
@@ -77,14 +79,25 @@ def build_index(
         )
         vectors.append(openrouter_embed_text(settings, sheet.retrieval_text))
 
-        image_paths = train_image_paths_for_label(
-            catalog_label,
-            class_names=class_names,
-            max_images=max_prototypes,
-        )
+        curated_names = curation.get(catalog_label)
+        if curated_names:
+            image_paths = resolve_curated_train_paths(
+                catalog_label,
+                curated_names,
+                class_names=class_names,
+            )
+        else:
+            image_paths = train_image_paths_for_label(
+                catalog_label,
+                class_names=class_names,
+                max_images=max_prototypes,
+            )
         for image_index, image_path in enumerate(image_paths):
             assert_not_test_split(image_path)
-            prototype_id = f"train-{image_index:02d}"
+            if curated_names:
+                prototype_id = f"curated-{Path(image_path.name).stem}"
+            else:
+                prototype_id = f"train-{image_index:02d}"
             point_id = stable_point_id(
                 catalog_label=catalog_label,
                 prototype_kind="image",
