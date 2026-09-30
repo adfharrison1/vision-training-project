@@ -14,7 +14,12 @@ class IdentificationRepository(Protocol):
     @property
     def backend_id(self) -> str: ...
 
-    def identify(self, observation: Observation) -> tuple[ObservationResult, dict]:
+    def identify(
+        self,
+        observation: Observation,
+        *,
+        rag_context: str | None = None,
+    ) -> tuple[ObservationResult, dict]:
         """Return the structured result and raw model payload for artifact persistence."""
         ...
 
