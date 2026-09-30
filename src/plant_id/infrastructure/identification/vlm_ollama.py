@@ -52,7 +52,12 @@ class VlmOllamaIdentificationRepository:
     def backend_id(self) -> str:
         return f"vlm:{self._settings.vision_model}"
 
-    def identify(self, observation: Observation) -> tuple[ObservationResult, dict]:
+    def identify(
+        self,
+        observation: Observation,
+        *,
+        rag_context: str | None = None,
+    ) -> tuple[ObservationResult, dict]:
         photo_count = len(observation.photo_paths)
         with identify_trace(
             self._settings,
@@ -60,12 +65,18 @@ class VlmOllamaIdentificationRepository:
             backend=self.backend_id,
             photo_count=photo_count,
         ):
-            return self._identify_with_tracing(observation, photo_count)
+            return self._identify_with_tracing(
+                observation,
+                photo_count,
+                rag_context=rag_context,
+            )
 
     def _identify_with_tracing(
         self,
         observation: Observation,
         photo_count: int,
+        *,
+        rag_context: str | None = None,
     ) -> tuple[ObservationResult, dict]:
         image_paths = [str(path.resolve()) for path in observation.photo_paths]
         for image_path in image_paths:
@@ -76,7 +87,7 @@ class VlmOllamaIdentificationRepository:
         log_stage(1, 4, f"Validated {photo_count} photo(s)")
 
         label_count = len(self._species_catalog.list_class_names())
-        prompt = build_vlm_prompt(self._species_catalog)
+        prompt = build_vlm_prompt(self._species_catalog, rag_context=rag_context)
         log_stage(2, 4, f"Built prompt ({label_count} species labels)")
 
         ollama_message = (

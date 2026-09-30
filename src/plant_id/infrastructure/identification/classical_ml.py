@@ -23,7 +23,13 @@ class ClassicalMlIdentificationRepository:
     def backend_id(self) -> str:
         return "ml:not-implemented"
 
-    def identify(self, observation: Observation) -> tuple[ObservationResult, dict]:
+    def identify(
+        self,
+        observation: Observation,
+        *,
+        rag_context: str | None = None,
+    ) -> tuple[ObservationResult, dict]:
+        _ = rag_context
         _ = self._species_catalog.list_class_names()
         raise IdentificationError(
             "Classical ML backend is not implemented yet. Use --backend vlm."

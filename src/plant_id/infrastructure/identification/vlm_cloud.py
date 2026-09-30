@@ -82,7 +82,12 @@ class VlmCloudIdentificationRepository:
                 "Cloud VLM is not configured: set PLANT_ID_VLM_CLOUD_MODEL."
             )
 
-    def identify(self, observation: Observation) -> tuple[ObservationResult, dict]:
+    def identify(
+        self,
+        observation: Observation,
+        *,
+        rag_context: str | None = None,
+    ) -> tuple[ObservationResult, dict]:
         photo_count = len(observation.photo_paths)
         trace_metadata: dict[str, Any] = {}
         if self._settings.vlm_cloud_vendor:
@@ -98,12 +103,14 @@ class VlmCloudIdentificationRepository:
             photo_count=photo_count,
             extra_metadata=trace_metadata,
         ):
-            return self._identify_with_tracing(observation, photo_count)
+            return self._identify_with_tracing(observation, photo_count, rag_context=rag_context)
 
     def _identify_with_tracing(
         self,
         observation: Observation,
         photo_count: int,
+        *,
+        rag_context: str | None = None,
     ) -> tuple[ObservationResult, dict]:
         self._validate_cloud_configuration()
         image_paths = [str(path.resolve()) for path in observation.photo_paths]
@@ -116,7 +123,7 @@ class VlmCloudIdentificationRepository:
         log_stage(1, 4, f"Validated {photo_count} photo(s)")
 
         label_count = len(self._species_catalog.list_class_names())
-        prompt = build_vlm_prompt(self._species_catalog)
+        prompt = build_vlm_prompt(self._species_catalog, rag_context=rag_context)
         log_stage(2, 4, f"Built prompt ({label_count} species labels)")
 
         content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]

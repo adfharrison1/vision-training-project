@@ -7,6 +7,7 @@ from typing import Any
 from plant_id.domain.exceptions import IdentificationError
 from plant_id.domain.models import Observation, ObservationResult, Prediction
 from plant_id.domain.repositories import SpeciesCatalogRepository
+from plant_id.domain.species_retrieval import RetrievedSpeciesContext
 from plant_id.infrastructure.config.settings import Settings
 
 PROMPT_TEMPLATE = """Identify the flowering plant in the photograph(s).
@@ -73,9 +74,31 @@ def is_unknown_species_label_error(exc: BaseException) -> bool:
     return isinstance(exc, IdentificationError) and str(exc).startswith("Unknown species_label:")
 
 
-def build_vlm_prompt(species_catalog: SpeciesCatalogRepository) -> str:
+def format_rag_context(contexts: tuple[RetrievedSpeciesContext, ...]) -> str:
+    """Format retrieved species sheets for VLM prompt injection."""
+    if not contexts:
+        return ""
+    blocks: list[str] = []
+    for index, ctx in enumerate(contexts, start=1):
+        blocks.append(
+            f"Reference {index} — {ctx.catalog_label}:\n{ctx.context_block.strip()}"
+        )
+    return (
+        "Retrieved species notes (use only to disambiguate; species_label must still "
+        "be from the allowed list):\n\n" + "\n\n".join(blocks)
+    )
+
+
+def build_vlm_prompt(
+    species_catalog: SpeciesCatalogRepository,
+    *,
+    rag_context: str | None = None,
+) -> str:
     class_names = "\n".join(f"- {name}" for name in species_catalog.list_class_names())
-    return PROMPT_TEMPLATE.format(class_names=class_names)
+    prompt = PROMPT_TEMPLATE.format(class_names=class_names)
+    if rag_context:
+        prompt = f"{prompt}\n\n{rag_context.strip()}\n"
+    return prompt
 
 
 def parse_vlm_result(
