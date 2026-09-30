@@ -26,15 +26,20 @@ context: |
   - Same Observation / ObservationResult models and metrics regardless of backend
 
   Runtime architecture (non-negotiable):
-  - Runtime identification uses ONLY local project backends wired via
-    IdentificationRepository — initially VLM/Ollama; classical ML later
-  - NO external identification APIs at runtime — not Pl@ntNet, not iNaturalist,
-    not cloud LLMs
-  - External services (e.g. Pl@ntNet API) MAY be used ONLY in optional eval/
-    benchmark adapters — never in IdentifyPlantUseCase or runtime repositories
-  - LLM observability (traces, prompts, responses) MUST use self-hosted Opik
-    on the developer machine when enabled — NO Comet cloud or external telemetry
-    backends; default off so identification works without Opik running
+  - Identification runs through `IdentificationRepository` implementations only:
+      `vlm` (local Ollama, default for CLI identify/demo), `vlm-cloud` (user-configured
+      OpenAI-compatible hosted VLM), and `classical` (stub). Backend choice is composition-only.
+  - Species retrieval (optional RAG) uses project retrieval repos: default
+      `nemotron-prototype` (OpenRouter multimodal embeddings + local Qdrant prototypes),
+      optional `describe-hybrid` (neutral VLM describe + BM25/text embed). Sheet
+      authoring and eval synthesis use the same `vlm_cloud_*` settings as identify when run.
+  - NO third-party plant identification APIs in runtime — not Pl@ntNet, not iNaturalist,
+    not vendor “identify this plant” SaaS. Those stay in optional eval/benchmark adapters only.
+  - Network-backed inference (hosted VLM, OpenRouter embeddings) is allowed when wired through
+    the above repositories and documented env vars; secrets stay in `PLANT_ID_*` settings only.
+  - LLM observability (traces, prompts, responses) MUST use self-hosted Opik on the developer
+    machine when enabled — NO Comet cloud or external telemetry backends; default off so
+    identification works without Opik running
 
   Stack (current direction):
   - Python 3.14.7 (pinned in `.python-version`; managed via uv)
@@ -72,7 +77,7 @@ context: |
   - Add local Opik observability before heavy eval/prompt iteration (optional but recommended)
   - Build Oxford 102 eval before optimizing prompts/RAG
   - Classical ML backend plugs into same repository interface — compare fairly on same metrics
-  - Try direct species lookup before vector DB
+  - Species retrieval/RAG baselines before fine-tuning investigations
   - Do not investigate fine-tuning until local VLM, classical ML, and RAG baselines are understood
 
   Version pinning (standing directive — do not skip):
@@ -110,14 +115,14 @@ rules:
     - List decision gates that must be resolved before full planning
     - Mark stub/placeholder changes as subject to revision
     - Note developer-experience goals when the change affects local setup or workflows
-    - State explicitly that runtime inference is local-only; external APIs are eval-only if at all
+    - State which backends need network access (vlm-cloud, OpenRouter retrieval) vs offline `vlm`; forbid third-party plant ID APIs in runtime repos
     - Describe layer boundaries and swappable repository backends when architecture is affected
   design:
     - Record alternatives considered for storage, retrieval, and eval architecture
     - Include a pinned-versions table with exact stable releases verified on the planning date
     - Flag open questions that would change specs or task breakdown before coding
     - Describe local dev setup, verification commands, and devex choices explicitly
-    - Separate runtime path from eval/benchmark path in architecture; forbid external ID APIs in runtime
+    - Separate runtime repository paths from eval-only benchmark adapters; forbid external plant ID SaaS in `IdentificationRepository` and retrieval runtime
     - Document domain/application/infrastructure/interfaces layers and repository ports
   tasks:
     - Break tasks into chunks achievable in one session
