@@ -53,7 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     verify_parser.add_argument(
         "--backend",
-        choices=("vlm", "vlm-cloud"),
+        choices=("vlm", "vlm-cloud", "retrieval", "species-sheets"),
         default="vlm",
         help="Backend to verify (default: vlm checks local Ollama).",
     )

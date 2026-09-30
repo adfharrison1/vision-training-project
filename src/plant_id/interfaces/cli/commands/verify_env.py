@@ -5,22 +5,27 @@ from __future__ import annotations
 import sys
 
 from plant_id.interfaces.composition import (
-    Backend,
     Settings,
     load_settings,
     verify_cloud_vlm_environment,
     verify_environment,
+    verify_retrieval_environment,
+    verify_species_sheets_environment,
 )
 
 
 def run_verify_env(
     settings: Settings | None = None,
     *,
-    backend: Backend = "vlm",
+    backend: str = "vlm",
 ) -> int:
     settings = settings or load_settings()
     if backend == "vlm-cloud":
         result = verify_cloud_vlm_environment(settings)
+    elif backend == "retrieval":
+        result = verify_retrieval_environment(settings)
+    elif backend == "species-sheets":
+        result = verify_species_sheets_environment(settings)
     else:
         result = verify_environment(settings)
     for message in result.messages:

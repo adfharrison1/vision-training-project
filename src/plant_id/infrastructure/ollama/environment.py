@@ -141,3 +141,74 @@ def verify_cloud_vlm_environment(settings: Settings | None = None) -> VerifyEnvR
         messages.append(f"Cloud vendor label: {settings.vlm_cloud_vendor}")
     messages.append("Cloud VLM settings are configured for backend vlm-cloud.")
     return VerifyEnvResult(ok=True, messages=tuple(messages))
+
+
+def verify_species_sheets_environment(settings: Settings | None = None) -> VerifyEnvResult:
+    from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
+    from plant_id.infrastructure.species_sheets.loader import (
+        list_sheet_paths,
+        load_species_sheet,
+        validate_sheet_catalog_membership,
+    )
+
+    settings = settings or Settings()
+    paths = list_sheet_paths(settings.species_sheets_dir)
+    if not paths:
+        return VerifyEnvResult(
+            ok=False,
+            messages=(f"No species sheets under {settings.species_sheets_dir}.",),
+        )
+    catalog = FileSpeciesCatalog(settings.species_catalog_path)
+    labels = set(catalog.list_class_names())
+    issues: list[str] = []
+    for path in paths:
+        sheet = load_species_sheet(path)
+        for issue in validate_sheet_catalog_membership(sheet, catalog_labels=labels):
+            issues.append(f"{path.name}: {issue}")
+    if issues:
+        return VerifyEnvResult(ok=False, messages=tuple(issues))
+    return VerifyEnvResult(
+        ok=True,
+        messages=(f"Validated {len(paths)} species sheet(s).",),
+    )
+
+
+def verify_retrieval_environment(settings: Settings | None = None) -> VerifyEnvResult:
+    settings = settings or Settings()
+    messages: list[str] = []
+    try:
+        from qdrant_client import QdrantClient
+
+        client = QdrantClient(url=settings.qdrant_url, timeout=settings.qdrant_timeout_seconds)
+        collections = client.get_collections()
+        names = {item.name for item in collections.collections}
+    except Exception as exc:  # noqa: BLE001
+        return VerifyEnvResult(
+            ok=False,
+            messages=(
+                f"Qdrant unreachable at {settings.qdrant_url}: {exc}",
+                "Start local Qdrant: ./scripts/qdrant.sh up",
+            ),
+        )
+
+    messages.append(f"Qdrant reachable at {settings.qdrant_url}")
+    if settings.qdrant_collection not in names:
+        return VerifyEnvResult(
+            ok=False,
+            messages=(
+                *messages,
+                f"Collection {settings.qdrant_collection!r} not found.",
+                "Build and seed: uv run python -m eval.build_retrieval_index "
+                "&& ./scripts/qdrant.sh seed",
+            ),
+        )
+    messages.append(f"Collection {settings.qdrant_collection!r} is present.")
+    index_manifest = settings.retrieval_index_dir / "manifest.json"
+    if not index_manifest.is_file():
+        messages.append(
+            f"Note: index manifest missing at {index_manifest} (build before seed)."
+        )
+    else:
+        messages.append(f"Index manifest present at {index_manifest}.")
+    messages.append("Retrieval environment check passed.")
+    return VerifyEnvResult(ok=True, messages=tuple(messages))
