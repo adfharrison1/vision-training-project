@@ -139,6 +139,102 @@ class Settings(BaseSettings):
             "use provider default."
         ),
     )
+    vlm_openrouter_api_key: str | None = Field(
+        default=None,
+        description="OpenRouter API key for Nemotron multimodal retrieval embeddings.",
+    )
+    openrouter_base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        description="OpenRouter OpenAI-compatible API base URL.",
+    )
+    openrouter_timeout_seconds: float = Field(
+        default=120.0,
+        gt=0,
+        description="HTTP timeout for OpenRouter embedding requests.",
+    )
+    openrouter_http_referer: str = Field(
+        default="https://github.com/uk-plant-id",
+        description="HTTP-Referer header required by OpenRouter for some routes.",
+    )
+    openrouter_app_title: str = Field(
+        default="plant-id-retrieval",
+        description="X-Title header sent to OpenRouter.",
+    )
+    retrieval_embed_model: str = Field(
+        default="nvidia/llama-nemotron-embed-vl-1b-v2:free",
+        description="OpenRouter embedding model id for multimodal prototypes.",
+    )
+    species_sheets_dir: Path = Field(
+        default_factory=lambda: _project_root() / "resources" / "species_sheets",
+        description="Directory of species sheet YAML files.",
+    )
+    retrieval_index_dir: Path = Field(
+        default_factory=lambda: _project_root() / "artifacts" / "retrieval_index",
+        description="Built OpenRouter index manifest and vectors (gitignored).",
+    )
+    qdrant_url: str = Field(
+        default="http://127.0.0.1:6333",
+        description="Qdrant HTTP API URL for retrieval seed/query.",
+    )
+    qdrant_collection: str = Field(
+        default="species_sheets_v1",
+        description="Qdrant collection name for species prototypes.",
+    )
+    qdrant_timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="HTTP timeout for Qdrant client calls.",
+    )
+    retrieval_max_prototypes_per_species: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Max Oxford train images indexed per species sheet.",
+    )
+    retrieval_search_multiplier: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Fetch limit multiplier before aggregating per species.",
+    )
+    retrieval_backend: str = Field(
+        default="nemotron-prototype",
+        description="Retrieval: nemotron-prototype (OpenRouter+Qdrant) or describe-hybrid.",
+    )
+    retrieval_top_k: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Default top-K species sheets for retrieval and RAG inject.",
+    )
+    rag_enabled: bool = Field(
+        default=False,
+        description="When true, inject retrieved context blocks into VLM identify prompt.",
+    )
+    retrieval_bm25_weight: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Weight for BM25 in describe-hybrid fusion.",
+    )
+    retrieval_embed_weight: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Text-embed weight for describe-hybrid fusion (fallback backend).",
+    )
+    retrieval_text_embed_backend: str = Field(
+        default="hashing",
+        description="Text embedder for describe-hybrid fallback: hashing or sentence-transformers.",
+    )
+    retrieval_text_embed_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        description="sentence-transformers model when backend is sentence-transformers.",
+    )
+    sheet_synth_prompt_version: str = Field(
+        default="sheet-synth-v1",
+        description="Prompt version recorded in synthesised sheet provenance.",
+    )
 
 
 @lru_cache
