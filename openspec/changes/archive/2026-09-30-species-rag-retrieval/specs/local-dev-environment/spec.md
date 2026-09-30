@@ -7,7 +7,12 @@ The project SHALL document a local Qdrant stack (Docker Compose and helper scrip
 #### Scenario: Developer bootstrap
 
 - **WHEN** a developer follows README Qdrant setup
-- **THEN** they SHALL be able to seed the vector store from project sheets and built embeddings without manual UI steps
+- **THEN** they SHALL be able to seed the vector store from project sheets and **OpenRouter-built** embedding artifacts without manual UI steps
+
+#### Scenario: OpenRouter key for index build
+
+- **WHEN** a developer runs the documented index build for prototype embeddings
+- **THEN** `PLANT_ID_VLM_OPENROUTER_API_KEY` SHALL be required
 
 ### Requirement: Retrieval verify hook
 

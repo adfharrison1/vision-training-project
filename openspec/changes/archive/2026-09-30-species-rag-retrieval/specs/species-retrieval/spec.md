@@ -11,12 +11,17 @@ The domain layer SHALL define a swappable port (e.g. `SpeciesRetrievalRepository
 
 ### Requirement: Multi-prototype vector index
 
-The indexing pipeline SHALL store multiple embedding prototypes per species (at minimum CLIP image prototypes from configured reference images and CLIP text prototypes from `retrieval_text`). Query ranking SHALL aggregate prototype scores per `catalog_label` (default: maximum similarity).
+The indexing pipeline SHALL store multiple embedding prototypes per species using **OpenRouter multimodal embeddings**: text prototype(s) from `retrieval_text` and image prototypes from configured reference images (e.g. Oxford train images, capped per species). Query ranking SHALL aggregate prototype scores per `catalog_label` (default: maximum similarity).
 
 #### Scenario: Multiple image prototypes
 
 - **WHEN** the index is built for a species with N reference images
 - **THEN** at least N image prototype vectors SHALL be associated with that `catalog_label` in the vector store
+
+#### Scenario: OpenRouter index build
+
+- **WHEN** a maintainer runs the documented index build
+- **THEN** vectors SHALL be produced via OpenRouter `/embeddings` using `PLANT_ID_VLM_OPENROUTER_API_KEY` and the configured embed model id
 
 ### Requirement: Local Qdrant with git-seeded content
 
@@ -29,17 +34,25 @@ The project SHALL provide Docker Compose (or equivalent) for local Qdrant and a 
 
 ### Requirement: Swappable retrieval backends
 
-Composition SHALL wire one of at least two retrieval backends via settings or CLI, analogous to identification backend selection:
+Composition SHALL wire retrieval backends via settings or CLI:
 
-- **clip-prototype** — CLIP image embedding against stored prototypes
-- **describe-hybrid** — neutral flower description via VLM, combined BM25 and text-embedding similarity over sheet text
+- **nemotron-prototype** (default) — OpenRouter image embedding against stored OpenRouter prototypes in Qdrant
+- **describe-hybrid** (optional comparison) — neutral flower description via VLM, combined BM25 and text-embedding similarity over sheet text (no OpenRouter query embed)
 
-#### Scenario: Backend selection
+#### Scenario: Primary backend selection
 
-- **WHEN** retrieval is invoked with backend `clip-prototype`
-- **THEN** the infrastructure implementation SHALL NOT call a generative describe model for the query
+- **WHEN** retrieval is invoked with default settings or backend `nemotron-prototype`
+- **THEN** the infrastructure implementation SHALL embed the query photo via OpenRouter and search Qdrant prototypes built with OpenRouter
 
 #### Scenario: Describe hybrid backend
 
 - **WHEN** retrieval is invoked with backend `describe-hybrid`
 - **THEN** the implementation SHALL use a neutral describe prompt (no catalog species selection), then rank sheets using both lexical (BM25) and semantic text embedding signals
+
+### Requirement: No local CLIP prototype path
+
+The project SHALL NOT provide local CLIP/open-clip prototype indexing or retrieval. Prototype embeddings SHALL use OpenRouter only.
+
+### Requirement: No alternate embedding vendors in runtime
+
+Fireworks or other cloud **`/embeddings`** endpoints SHALL NOT be integrated into the runtime retrieval or index build path. Exploratory probe scripts in `eval/` are permitted and are not runtime.

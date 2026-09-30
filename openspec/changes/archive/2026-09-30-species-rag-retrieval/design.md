@@ -1,14 +1,22 @@
 ## Context
 
-See `proposal.md`. User-locked architecture: git sheets → build embeddings → seed Qdrant → swappable retrieval backends → retrieval eval → (later) identify prompt augment.
+See `proposal.md`. User-locked architecture: git sheets → **OpenRouter** build embeddings → seed Qdrant → swappable retrieval backends → retrieval eval → identify prompt augment.
+
+### Embedding provider (implemented)
+
+| Tier | Technology | Role |
+|------|------------|------|
+| **Primary** | OpenRouter `/embeddings` (default `nvidia/llama-nemotron-embed-vl-1b-v2:free`) | Text + image prototype vectors; query embedding for `nemotron-prototype` |
+| **Optional comparison** | `describe-hybrid` | VLM describe + BM25 + text embed over sheets; no Qdrant prototype query |
+| **Not implemented** | Fireworks `/embeddings` | Exploratory probes only (`eval/probe_fireworks_embeddings.py`) |
 
 ## Goals / Non-Goals
 
 **Goals**
 
 - Reproducible corpus + index + local Qdrant seed workflow
-- Multi-prototype CLIP indexing per `catalog_label`
-- Two retrieval backends comparable via the same eval harness
+- Multi-prototype **OpenRouter** indexing per `catalog_label` (text + reference images)
+- Primary retrieval backend `nemotron-prototype`; fallback backends kept for comparison only
 - Retrieval port swappable in infrastructure (fake in unit tests)
 - Eval artifacts parallel to `eval/run_oxford102.py` (manifest, report, failures, agent commands)
 
@@ -30,8 +38,9 @@ domain/
 infrastructure/
   retrieval/
     qdrant_store.py          — upsert/query; implements low-level store behind port
-    clip_prototype_backend.py
-    describe_hybrid_backend.py  — VLM describe + BM25 + text embed fusion
+    openrouter_embedder.py       — OpenRouter multimodal embeddings
+    openrouter_prototype_backend.py
+    describe_hybrid_backend.py   — optional VLM describe + BM25 + text embed
   species_sheets/            — load YAML from disk (also used to seed Qdrant payloads)
 
 composition/
@@ -51,7 +60,7 @@ Application use case **`IdentifyPlantUseCase`** stays unchanged until augment ta
 
 ```yaml
 catalog_label: bolero deep blue   # must match species_catalog
-retrieval_text: |                 # species morphology; embedded (CLIP text + BM25 corpus)
+retrieval_text: |                 # species morphology; embedded (OpenRouter text + BM25 in describe fallback)
 context_block: |                  # disambiguation; stored in Qdrant payload, not embedded (optional embed later)
 provenance:                       # optional
   authored_by: vlm-synth|human
@@ -63,8 +72,8 @@ provenance:                       # optional
 
 For each species:
 
-1. **Text point(s):** CLIP text encoder on `retrieval_text` (+ optional title = `catalog_label`).
-2. **Image points:** CLIP image encoder on each configured **reference image** (default: Oxford **train** images for that class, cap N per species to control size).
+1. **Text point(s):** OpenRouter embed on `retrieval_text` (and optional `catalog_label` prefix in text).
+2. **Image points:** OpenRouter embed on each configured **reference image** (default: Oxford **train** images for that class, cap N per species to control size).
 
 Qdrant point payload: `{ catalog_label, prototype_kind: text|image, prototype_id, retrieval_text?, context_block }`.
 
@@ -77,7 +86,7 @@ Reference images are **indexing-only**; eval **test** images are never used as p
 | Artifact | Location | Role |
 |----------|----------|------|
 | Sheet YAML | `resources/species_sheets/` (git) | Human/VLM-authored source of truth |
-| Built index | `artifacts/retrieval_index/` (gitignored by default; optional committed tarball for CI) | Vectors + manifest (model ids, CLIP version, image list checksum) |
+| Built index | `artifacts/retrieval_index/` (gitignored by default; optional committed tarball for CI) | Vectors + manifest (`embed_provider`, `embed_model`, image list checksum) |
 | Qdrant | Docker volume | Runtime query; **seeded** from built index |
 
 **Compose flow (corrected):**
@@ -97,16 +106,16 @@ Embeddings are **not** hand-maintained in git like YAML; they are **regenerated*
 
 Settings + composition:
 
-| Backend id | Query | Index use |
-|------------|-------|-----------|
-| `clip-prototype` | CLIP image embed(photo) vs Qdrant vectors | Image + text prototypes |
-| `describe-hybrid` | Neutral VLM describe(photo) → BM25 scores + text-embed vector vs sheet text vectors; fused rank | Text vectors in Qdrant; BM25 corpus from `retrieval_text` in memory or sidecar |
+| Backend id | Query | Index use | Priority |
+|------------|-------|-----------|----------|
+| `nemotron-prototype` | OpenRouter image embed(photo) vs Qdrant vectors | Image + text prototypes from OpenRouter build | **Default** |
+| `describe-hybrid` | Neutral VLM describe(photo) → BM25 + text-embed vs sheet text | No OpenRouter query embed; in-memory corpus | Optional comparison |
 
 Describe VLM: reuse **`VlmCloudIdentificationRepository`**’s client with a **different prompt** (infrastructure module, not identify repo), or small `DescribeClient` sharing settings. Local Ollama describe variant optional parity task.
 
-**One change, two backends:** implement CLIP path first for end-to-end index+eval; describe-hybrid second — **same** `run_retrieval_eval.py` and report schema, not two OpenSpec changes.
+**One change, multiple backends:** OpenRouter path is default for index+eval; fallback backends share **`run_retrieval_eval.py`** and report schema.
 
-**BM25 + text embed:** not two iterations — **one describe backend** that merges lexical and semantic scores (weighted sum; weights in settings for eval sweeps).
+**BM25 + text embed (describe-hybrid only):** fallback comparison backend — weighted fusion in settings; not the primary embedding stack.
 
 ### Sheet synthesis script (a)
 
@@ -151,8 +160,8 @@ Later tasks in same change: `PLANT_ID_RAG_ENABLED`, inject formatted `context_bl
 ## Risks
 
 - **Train-image prototypes + test eval** — mitigate with split enforcement in build script
-- **Describe path cost/latency** — eval default backend `clip-prototype`; describe for comparison runs
-- **OpenSpec “local-only runtime”** — document that retrieval describe may use vlm-cloud like identify; CLIP stays local
+- **Describe path cost/latency** — primary eval default `nemotron-prototype`; describe-hybrid for fallback comparison only
+- **OpenSpec “local-only runtime”** — document that OpenRouter embeddings and retrieval describe may use network APIs like `vlm-cloud` identify
 
 ## Open questions (non-blocking)
 
@@ -166,9 +175,10 @@ Later tasks in same change: `PLANT_ID_RAG_ENABLED`, inject formatted `context_bl
 |-----------|--------|
 | Python | 3.14.7 (existing) |
 | qdrant-client | latest stable at task time |
-| open-clip-torch or open_clip | latest stable at task time |
-| sentence-transformers | latest stable at task time |
-| rank-bm25 | latest stable at task time |
+| httpx | OpenRouter embedding HTTP client |
+| OpenRouter embed model | `nvidia/llama-nemotron-embed-vl-1b-v2:free` (default; override via settings) |
+| rank-bm25 | describe-hybrid optional |
+| sentence-transformers | describe-hybrid optional (hashing default) |
 
 Record exact pins in `pyproject.toml` when tasks execute.
 

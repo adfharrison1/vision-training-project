@@ -1,4 +1,10 @@
-## ADDED Requirements
+# retrieval-evaluation Specification
+
+## Purpose
+
+Run offline retrieval-quality benchmarks (Recall@K, MRR) with the same eval run layout as identification eval, plus failure forensics and agent commands for triage.
+
+## Requirements
 
 ### Requirement: Retrieval-only evaluation runs
 
@@ -8,6 +14,13 @@ The project SHALL provide an offline retrieval evaluation entrypoint that reuses
 
 - **WHEN** a maintainer runs retrieval eval twice with the same profile and different `--retrieval-backend` values
 - **THEN** reports SHALL use the same schema so metrics are directly comparable
+
+#### Scenario: Primary backend default
+
+- **WHEN** retrieval eval runs without overriding backend
+- **THEN** the default backend SHALL be `nemotron-prototype` (OpenRouter query embeddings against OpenRouter-built Qdrant prototypes)
+
+Optional comparison backend **`describe-hybrid`** is documented for eval; it is not a replacement for OpenRouter prototype embeddings.
 
 ### Requirement: Retrieval failure forensics
 

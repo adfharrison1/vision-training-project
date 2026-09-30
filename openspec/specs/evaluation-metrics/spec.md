@@ -202,3 +202,12 @@ Eval reports SHALL record enough inference configuration to compare runs across 
 
 - **WHEN** the eval run used backend `vlm-cloud`
 - **THEN** the report SHALL include optional cloud vendor label and base URL host only, and SHALL NOT include API keys or full authorization headers
+
+### Requirement: Retrieval quality metrics
+
+Evaluation reports for retrieval runs SHALL include Recall@K (at configured K values) and mean reciprocal rank (MRR) for ground-truth species sheet retrieval, distinct from top-1/top-3 identification accuracy.
+
+#### Scenario: Metric separation
+
+- **WHEN** a retrieval eval report is written
+- **THEN** it SHALL NOT conflate retrieval Recall@K with VLM misclassification counts

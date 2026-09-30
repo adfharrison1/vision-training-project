@@ -7,4 +7,4 @@ Species retrieval backend selection and wiring SHALL occur in `interfaces/compos
 #### Scenario: Swappable retrieval backend
 
 - **WHEN** composition builds a retrieval repository with backend `describe-hybrid`
-- **THEN** only infrastructure retrieval modules and settings SHALL differ from the `clip-prototype` wiring
+- **THEN** only infrastructure retrieval modules and settings SHALL differ from the `nemotron-prototype` wiring

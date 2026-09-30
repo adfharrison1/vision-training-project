@@ -61,7 +61,7 @@ context: |
   2. local-opik-observability  — self-hosted Opik tracing for Ollama calls [complete]
   3. eval-dataset-baseline     — Oxford 102 eval + optional Pl@ntNet comparison [complete]
   4. classical-ml-backend      — train/serve sklearn/torch repo on Oxford 102 [next]
-  5. species-rag-retrieval     — sheets, Qdrant multi-prototype, swappable retrieval eval, RAG inject [planned]
+  5. species-rag-retrieval     — archived 2026-09-30 (OpenRouter + Qdrant, retrieval eval, RAG) [done]
   5a. direct-species-rag       — superseded by species-rag-retrieval [stub — do not implement]
   6. vector-retrieval          — superseded by species-rag-retrieval [stub — do not implement]
   7. improvement-loop-service  — experiment loop + local service [stub]
