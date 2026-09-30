@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from eval.metrics import ObservationResultRow
 from eval.failure_forensics import ensure_eval_failure_forensics, eval_failures_dir
+from eval.metrics import ObservationResultRow
 from eval.run_registry import eval_run_paths
 
 

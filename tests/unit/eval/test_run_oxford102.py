@@ -40,6 +40,7 @@ def _sample_args(**overrides) -> Namespace:
         "plantnet_baseline": False,
         "profile_manifest": None,
         "think": None,
+        "rag": None,
     }
     defaults.update(overrides)
     return Namespace(**defaults)

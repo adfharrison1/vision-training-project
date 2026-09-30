@@ -158,6 +158,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Include optional Pl@ntNet baseline metrics",
     )
     parser.add_argument(
+        "--rag",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable species RAG prompt injection (default: PLANT_ID_RAG_ENABLED).",
+    )
+    parser.add_argument(
         "--think",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -349,6 +355,8 @@ def _run_plantnet_observation(
 
 def run_eval(args: argparse.Namespace) -> int:
     settings = resolve_settings(load_settings(), ollama_think=args.think)
+    if getattr(args, "rag", None) is not None:
+        settings = settings.model_copy(update={"rag_enabled": args.rag})
     run_purpose = (args.run_purpose or "").strip()
     if not run_purpose:
         print("--run-purpose must be a non-empty string.", file=sys.stderr)
