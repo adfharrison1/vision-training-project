@@ -8,15 +8,21 @@ from typing import Literal
 from plant_id.application.use_cases.identify_plant import IdentifyPlantUseCase
 from plant_id.infrastructure.config.settings import Settings
 from plant_id.infrastructure.identification.classical_ml import ClassicalMlIdentificationRepository
+from plant_id.infrastructure.identification.rag_augmented import (
+    RagAugmentedIdentificationRepository,
+)
 from plant_id.infrastructure.identification.vlm_cloud import VlmCloudIdentificationRepository
 from plant_id.infrastructure.identification.vlm_ollama import VlmOllamaIdentificationRepository
 from plant_id.infrastructure.ollama.environment import (
     VerifyEnvResult,
     verify_cloud_vlm_environment,
     verify_environment,
+    verify_retrieval_environment,
+    verify_species_sheets_environment,
 )
 from plant_id.infrastructure.persistence.file_artifacts import FileArtifactRepository
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
+from plant_id.interfaces.composition.retrieval import RetrievalBackend, build_species_retrieval_repo
 
 Backend = Literal["vlm", "vlm-cloud", "classical"]
 
@@ -59,6 +65,20 @@ def build_identify_use_case(
 
     artifacts_root = artifact_dir or settings.identify_artifacts_dir
     artifact_repo = FileArtifactRepository(artifacts_root)
+
+    if settings.rag_enabled:
+        backend_id: RetrievalBackend
+        if settings.retrieval_backend == "describe-hybrid":
+            backend_id = "describe-hybrid"
+        else:
+            backend_id = "nemotron-prototype"
+        retrieval_repo = build_species_retrieval_repo(backend_id, settings)
+        identification_repo = RagAugmentedIdentificationRepository(
+            identification_repo,
+            retrieval_repo,
+            settings,
+        )
+
     return IdentifyPlantUseCase(identification_repo, artifact_repo)
 
 
@@ -72,4 +92,6 @@ __all__ = [
     "resolve_settings",
     "verify_cloud_vlm_environment",
     "verify_environment",
+    "verify_retrieval_environment",
+    "verify_species_sheets_environment",
 ]

@@ -7,6 +7,8 @@ from plant_id.interfaces.composition.container import (
     resolve_settings,
     verify_cloud_vlm_environment,
     verify_environment,
+    verify_retrieval_environment,
+    verify_species_sheets_environment,
 )
 from plant_id.interfaces.composition.identify import IdentifyRunResult, execute_identify
 
@@ -21,4 +23,6 @@ __all__ = [
     "resolve_settings",
     "verify_cloud_vlm_environment",
     "verify_environment",
+    "verify_retrieval_environment",
+    "verify_species_sheets_environment",
 ]
