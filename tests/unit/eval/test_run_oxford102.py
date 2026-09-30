@@ -1,12 +1,45 @@
 from argparse import Namespace
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from eval.retrieval_metrics import RetrievalMetrics, RetrievalObservationRow
 from eval.run_oxford102 import build_parser, parse_duration_budget, run_eval
 
 from plant_id.domain.models import ObservationResult, Prediction
 from plant_id.infrastructure.config.settings import Settings
+
+_RETRIEVAL_METRICS_STUB = RetrievalMetrics(
+    observation_count=1,
+    success_count=1,
+    failure_count=0,
+    recall_at_k={1: 1.0, 3: 1.0, 5: 1.0},
+    mrr=1.0,
+    observations=[
+        RetrievalObservationRow(
+            image="data/flowers/jpg/image_00001.jpg",
+            ground_truth="tiger lily",
+            retrieved_labels=("tiger lily",),
+            scores=(0.95,),
+            recall_at_k={1: True, 3: True, 5: True},
+            reciprocal_rank=1.0,
+        )
+    ],
+)
+
+
+@contextmanager
+def _retrieval_patches():
+    repo = type("Repo", (), {"backend_id": "unit-test-retrieval"})()
+    with (
+        patch("eval.run_oxford102.build_species_retrieval_repo", return_value=repo),
+        patch(
+            "eval.run_oxford102.score_retrieval_observations",
+            return_value=_RETRIEVAL_METRICS_STUB,
+        ),
+    ):
+        yield
 
 
 def _mock_settings() -> object:
@@ -41,6 +74,7 @@ def _sample_args(**overrides) -> Namespace:
         "profile_manifest": None,
         "think": None,
         "rag": None,
+        "retrieval_backend": "nemotron-prototype",
     }
     defaults.update(overrides)
     return Namespace(**defaults)
@@ -130,6 +164,7 @@ def test_run_eval_aggregates_token_usage_in_report(tmp_path: Path) -> None:
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
         ),
+        _retrieval_patches(),
     ):
         exit_code = run_eval(
             _sample_args(output=output_path, backend="vlm-cloud", plantnet_baseline=False)
@@ -186,6 +221,7 @@ def test_run_eval_writes_report_when_plantnet_disabled(tmp_path: Path) -> None:
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
         ),
+        _retrieval_patches(),
     ):
         exit_code = run_eval(_sample_args(output=output_path, plantnet_baseline=False))
 
@@ -243,6 +279,7 @@ def test_run_eval_local_metrics_survive_plantnet_failure(tmp_path: Path) -> None
         ),
         patch("eval.run_oxford102.plantnet_api_key", return_value="test-key"),
         patch("eval.run_oxford102.identify_image", return_value=plantnet_failure),
+        _retrieval_patches(),
     ):
         exit_code = run_eval(_sample_args(output=output_path, plantnet_baseline=True))
 
@@ -295,14 +332,22 @@ def test_run_eval_writes_manifest_and_index(tmp_path: Path) -> None:
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
         ),
+        _retrieval_patches(),
     ):
         exit_code = run_eval(_sample_args(force=True))
 
     assert exit_code == 0
-    run_root = settings.eval_runs_dir / "unit-test"
+    run_root = settings.eval_runs_dir / "full_identify" / "unit-test"
     assert (run_root / "manifest.json").is_file()
-    assert (settings.eval_runs_dir / "index.json").is_file()
-    assert (run_root / "eval" / "report.json").is_file()
+    assert (settings.eval_runs_dir / "full_identify" / "index.json").is_file()
+    report_path = run_root / "eval" / "report.json"
+    assert report_path.is_file()
+    import json
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["run_type"] == "full_identify"
+    assert report["retrieval"]["mrr"] == 1.0
+    assert "top1_accuracy_all" in report
 
 
 def test_run_eval_applies_ollama_think_flag(tmp_path: Path) -> None:
@@ -353,6 +398,7 @@ def test_run_eval_applies_ollama_think_flag(tmp_path: Path) -> None:
             "eval.run_oxford102.FileSpeciesCatalog",
             return_value=type("Catalog", (), {"list_class_names": lambda self: ["tiger lily"]})(),
         ),
+        _retrieval_patches(),
     ):
         exit_code = run_eval(_sample_args(output=output_path, think=True, force=True))
 

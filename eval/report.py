@@ -10,6 +10,12 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from eval.metrics import EvalMetrics, ObservationResultRow
+from eval.retrieval_report import (
+    RUN_TYPE_FULL_IDENTIFY,
+    RetrievalFailureRow,
+    RetrievalObservationReportRow,
+    RetrievalReportSection,
+)
 
 
 class FailureRow(BaseModel):
@@ -87,6 +93,7 @@ class EvalReport(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     eval_run_id: str
+    run_type: str = RUN_TYPE_FULL_IDENTIFY
     run_purpose: str
     git_commit: str | None = None
     profile: str
@@ -112,6 +119,9 @@ class EvalReport(BaseModel):
     partial: bool = False
     stopped_reason: str | None = None
     inference: InferenceReportSection | None = None
+    retrieval: RetrievalReportSection | None = None
+    retrieval_observations: list[RetrievalObservationReportRow] | None = None
+    retrieval_failures: list[RetrievalFailureRow] | None = None
 
 
 def default_report_path(
@@ -119,9 +129,14 @@ def default_report_path(
     *,
     eval_runs_root: Path | None = None,
 ) -> Path:
+    from eval.eval_run_roots import full_identify_eval_runs_root
     from eval.run_registry import eval_run_paths
+    from plant_id.interfaces.composition import load_settings
 
-    root = eval_runs_root or Path("eval_runs")
+    if eval_runs_root is not None:
+        root = eval_runs_root
+    else:
+        root = full_identify_eval_runs_root(load_settings())
     return eval_run_paths(root, eval_run_id).report_path
 
 
@@ -159,6 +174,10 @@ def build_report(
     stopped_reason: str | None = None,
     inference: InferenceReportSection | None = None,
     failure_artifacts_dir: Path | None = None,
+    eval_runs_root: Path | None = None,
+    retrieval: RetrievalReportSection | None = None,
+    retrieval_observations: list[RetrievalObservationReportRow] | None = None,
+    retrieval_failures: list[RetrievalFailureRow] | None = None,
 ) -> EvalReport:
     observations = [_observation_row(row) for row in metrics.observations]
     failures = [
@@ -182,7 +201,12 @@ def build_report(
 
     artifacts_dir: str | None = None
     if failure_artifacts_dir is not None and failure_artifacts_dir.is_dir():
-        artifacts_dir = str(failure_artifacts_dir)
+        if eval_runs_root is not None:
+            from eval.run_registry import relative_eval_run_path
+
+            artifacts_dir = relative_eval_run_path(failure_artifacts_dir, eval_runs_root)
+        else:
+            artifacts_dir = str(failure_artifacts_dir)
 
     return EvalReport(
         eval_run_id=eval_run_id,
@@ -211,6 +235,9 @@ def build_report(
         partial=partial,
         stopped_reason=stopped_reason,
         inference=inference,
+        retrieval=retrieval,
+        retrieval_observations=retrieval_observations,
+        retrieval_failures=retrieval_failures,
     )
 
 

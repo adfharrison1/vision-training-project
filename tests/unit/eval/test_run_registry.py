@@ -92,5 +92,6 @@ def test_run_eval_rejects_empty_run_purpose() -> None:
         profile_manifest=None,
         think=None,
         rag=None,
+        retrieval_backend="nemotron-prototype",
     )
     assert run_eval(args) == 1

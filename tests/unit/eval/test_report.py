@@ -173,3 +173,39 @@ def test_write_report_includes_aggregated_inference_usage(tmp_path: Path) -> Non
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["inference"]["usage"]["total_tokens"] == 2900
     assert payload["observations"][0]["total_tokens"] == 1500
+
+
+def test_build_report_failure_artifacts_dir_relative_to_eval_runs_root(
+    tmp_path: Path,
+) -> None:
+    eval_root = tmp_path / "full_identify"
+    run_id = "layout-run"
+    failures_dir = eval_root / run_id / "eval" / "failures"
+    failures_dir.mkdir(parents=True)
+    (failures_dir / "image_00001.json").write_text("{}", encoding="utf-8")
+
+    rows = [
+        ObservationResultRow(
+            image="image_00001.jpg",
+            ground_truth="tiger lily",
+            predicted="wrong",
+            top1_match=False,
+            top3_match=False,
+            duration_ms=1,
+            observation_id="obs-1",
+        )
+    ]
+    metrics = compute_metrics(rows)
+    report = build_report(
+        eval_run_id=run_id,
+        run_purpose="relative failure dir",
+        profile="smoke",
+        model_tag="test",
+        backend="vlm",
+        split="test",
+        metrics=metrics,
+        duration_total_ms=1,
+        failure_artifacts_dir=failures_dir,
+        eval_runs_root=eval_root,
+    )
+    assert report.failure_artifacts_dir == f"{run_id}/eval/failures"

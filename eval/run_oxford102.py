@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from eval.baselines.plantnet import identify_image, plantnet_api_key
 from eval.dataset import EvalProfile, list_eval_images, resolve_profile
+from eval.eval_run_roots import full_identify_eval_runs_root
 from eval.failure_forensics import (
     ensure_eval_failure_forensics,
     eval_failures_dir,
@@ -31,6 +32,8 @@ from eval.report import (
     build_report,
     write_report,
 )
+from eval.retrieval_report import build_retrieval_report_extras
+from eval.retrieval_scoring import score_retrieval_observations
 from eval.run_registry import (
     append_index_entry,
     capture_git_commit,
@@ -46,6 +49,7 @@ from plant_id.infrastructure.observability.opik_tracing import eval_trace_sessio
 from plant_id.infrastructure.species.file_catalog import FileSpeciesCatalog
 from plant_id.interfaces.composition import execute_identify, load_settings, resolve_settings
 from plant_id.interfaces.composition.container import Backend
+from plant_id.interfaces.composition.retrieval import RetrievalBackend, build_species_retrieval_repo
 
 _DURATION_PATTERN = re.compile(
     r"^(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s?)?$",
@@ -171,6 +175,12 @@ def build_parser() -> argparse.ArgumentParser:
             "Enable Ollama thinking mode for this eval run "
             "(default: false, or PLANT_ID_OLLAMA_THINK)."
         ),
+    )
+    parser.add_argument(
+        "--retrieval-backend",
+        choices=["nemotron-prototype", "describe-hybrid"],
+        default="nemotron-prototype",
+        help="Backend for retrieval metrics scored after identify (default: nemotron-prototype)",
     )
     return parser
 
@@ -365,7 +375,7 @@ def run_eval(args: argparse.Namespace) -> int:
     eval_run_id = args.eval_run_id or default_eval_run_id()
     profile = resolve_profile(args.profile).value
     backend: Backend = args.backend
-    eval_runs_root = settings.eval_runs_dir
+    eval_runs_root = full_identify_eval_runs_root(settings)
     paths = eval_run_paths(eval_runs_root, eval_run_id)
 
     if run_dir_exists(paths) and not args.force:
@@ -483,6 +493,30 @@ def run_eval(args: argparse.Namespace) -> int:
             observations=plantnet_rows,
         )
 
+    retrieval_backend: RetrievalBackend = args.retrieval_backend  # type: ignore[assignment]
+    top_k = settings.retrieval_top_k
+    use_qdrant = retrieval_backend == "nemotron-prototype"
+    retrieval_repo = build_species_retrieval_repo(
+        retrieval_backend,
+        settings,
+        use_qdrant=use_qdrant,
+    )
+    scored_images = images[: len(rows)]
+    retrieval_metrics = score_retrieval_observations(
+        retrieval_repo,
+        scored_images,
+        top_k=top_k,
+        artifacts_dir=None,
+        failures_dir=None,
+    )
+    retrieval_section, retrieval_observations, retrieval_failures = build_retrieval_report_extras(
+        retrieval_metrics,
+        backend=retrieval_backend,
+        model_tag=retrieval_repo.backend_id,
+        top_k=top_k,
+        rag_enabled_for_identify=settings.rag_enabled,
+    )
+
     report = build_report(
         eval_run_id=eval_run_id,
         run_purpose=run_purpose,
@@ -500,6 +534,10 @@ def run_eval(args: argparse.Namespace) -> int:
         failure_artifacts_dir=eval_failures_dir(eval_run_id, eval_runs_root=eval_runs_root)
         if metrics.parse_failure_count or metrics.misclassification_count
         else None,
+        eval_runs_root=eval_runs_root,
+        retrieval=retrieval_section,
+        retrieval_observations=retrieval_observations,
+        retrieval_failures=retrieval_failures,
     )
     output_path = args.output or paths.report_path
     write_report(report, output_path)
@@ -548,6 +586,12 @@ def run_eval(args: argparse.Namespace) -> int:
                 f"Failure forensics: {report.failure_artifacts_dir}/",
                 file=sys.stderr,
             )
+        print(
+            f"retrieval Recall@1={report.retrieval.recall_at_k.get(1, 0.0):.3f} "
+            f"MRR={report.retrieval.mrr:.3f} "
+            f"(backend={report.retrieval.backend}, rag_for_identify={settings.rag_enabled})",
+            file=sys.stderr,
+        )
 
     return 0
 
